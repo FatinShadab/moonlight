@@ -1,0 +1,177 @@
+{
+  "$defs": {
+    "EvidenceItem": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "availability": {
+                "const": "observed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "reason": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "availability": {
+                "enum": [
+                  "unavailable",
+                  "error"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "reason": {
+                "pattern": "\\S",
+                "type": "string"
+              }
+            },
+            "required": [
+              "reason"
+            ]
+          }
+        }
+      ],
+      "description": "One observed, unavailable, or failed piece of evidence.",
+      "properties": {
+        "availability": {
+          "enum": [
+            "observed",
+            "unavailable",
+            "error"
+          ],
+          "title": "Availability",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^ev-(process|storage)-[a-z][a-z0-9_-]*-[0-9a-f]{8}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/EvidenceKind"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        },
+        "severity_hint": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SeverityHint"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "source": {
+          "pattern": "^[a-z][a-z0-9_-]*$",
+          "title": "Source",
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "title": "Timestamp",
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/$defs/JsonValue"
+        }
+      },
+      "required": [
+        "id",
+        "source",
+        "kind",
+        "value",
+        "availability",
+        "timestamp"
+      ],
+      "title": "EvidenceItem",
+      "type": "object"
+    },
+    "EvidenceKind": {
+      "description": "Supported categories of process and storage evidence.",
+      "enum": [
+        "executable_path",
+        "parent_chain",
+        "command_line",
+        "network_activity",
+        "sha256",
+        "signature_status",
+        "folder_size",
+        "growth_rate",
+        "file_age",
+        "file_type",
+        "duplicate_hash",
+        "process_disk_link"
+      ],
+      "title": "EvidenceKind",
+      "type": "string"
+    },
+    "JsonValue": {},
+    "SeverityHint": {
+      "description": "Local relevance hint, not a final risk verdict.",
+      "enum": [
+        "info",
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "title": "SeverityHint",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Evidence for one process or storage subject.",
+  "properties": {
+    "items": {
+      "items": {
+        "$ref": "#/$defs/EvidenceItem"
+      },
+      "title": "Items",
+      "type": "array"
+    },
+    "subject_id": {
+      "minLength": 1,
+      "title": "Subject Id",
+      "type": "string"
+    },
+    "subject_type": {
+      "enum": [
+        "process",
+        "storage"
+      ],
+      "title": "Subject Type",
+      "type": "string"
+    }
+  },
+  "required": [
+    "subject_type",
+    "subject_id",
+    "items"
+  ],
+  "title": "EvidenceBundle",
+  "type": "object"
+}
