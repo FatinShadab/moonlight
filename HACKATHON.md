@@ -35,6 +35,13 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 - Added a bounded cache keyed by SHA-256, modified time and path, plus file-change guards.
 - Added mocked valid, invalid, unsigned, unavailable, denied, missing, malformed and timeout coverage.
 
+## 2026-10-27 — Collection CLI
+
+- Added `moonlight collect --pid N` and `python -m moonlight collect --pid N`.
+- The JSON bundle contains all nine observations, preserving individual failures; missing process identity returns a structured error and status 1.
+- Added assembly/CLI tests and a Windows CI smoke check against the runner's own PowerShell process.
+- Collection remains read-only and has no rule evaluation or AI calls.
+
 ## Planned evaluation
 
 The [PRD](Moonlight%20Product%20Requirements%20Document.md) defines process and storage rule metrics, citation coverage, schema validity, ablations, and robustness scenarios. Results will include the labeled-set size and reproduction method when measurements exist. No performance or safety metric is claimed yet.

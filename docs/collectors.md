@@ -1,5 +1,18 @@
 # Read-only process collection
 
+Run `moonlight collect --pid N` (or `python -m moonlight collect --pid N`) after
+installing the package. Stdout contains one JSON EvidenceBundle with nine items.
+Exit status is 0 for a bundle, 1 for a structured identity error, and 2 for invalid
+CLI arguments. Individual unavailable/error fields do not suppress a bundle.
+The CLI uses the caller's existing permissions and never requests elevation.
+
+`collect_evidence` assembles all three collectors. For long-lived callers, pass
+a reusable `SignatureCollector` to retain its cache across collections. File
+observations refer to the executable path at collection time, not a snapshot of
+the image originally loaded into process memory. These are sequential OS
+observations, not an atomic snapshot. The local collection path has no rules,
+reasoning, policy actions or API dependency.
+
 `collect_process(pid, access=...)` queries executable path, parent chain (nearest
 parent first, with each PID, creation time, name and path), command-line argument
 list, UTC start time, user, IPv4/IPv6 connection endpoints and statuses, and all
@@ -20,7 +33,7 @@ structured `CollectionError` with PID, availability and reason, without inventin
 an EvidenceBundle identity. Evidence content is untrusted data.
 
 `ProcessAccess` is the mockable read-only interface. `PsutilAccess` implements it
-with [psutil queries](https://psutil.readthedocs.io/en/release-7.2.2/).
+with [psutil queries](https://psutil.readthedocs.io/).
 
 ## Executable SHA-256
 
@@ -42,7 +55,8 @@ the size, modified time in nanoseconds, device and inode of the hashed file.
 [`Get-AuthenticodeSignature -LiteralPath`](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.security/get-authenticodesignature)
 in an argument-list subprocess with a five-second timeout. A constant encoded
 script reads the UTF-8 literal path from stdin, so file names are never interpreted
-as PowerShell code. Queries run without a profile or visible window.
+as PowerShell code. Queries run without a profile or visible window, using the
+helper's built-in module directory rather than inherited custom module paths.
 
 Values contain a `state`: `signed_valid`, `signed_invalid`, `unsigned` or
 `unavailable`. Valid maps to signed_valid; NotSigned to unsigned; HashMismatch,

@@ -26,6 +26,9 @@ dev = [
     "pre-commit==4.7.0",
 ]
 
+[project.scripts]
+moonlight = "moonlight.cli:main"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
