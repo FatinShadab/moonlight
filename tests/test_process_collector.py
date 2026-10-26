@@ -103,6 +103,7 @@ def test_success_and_stable_identity(process: Mock) -> None:
         (psutil.TimeoutExpired(1, pid=42), "timeout", "unavailable"),
         (TimeoutError(), "timeout", "unavailable"),
         (OSError(), "os_or_collector_error", "error"),
+        (RuntimeError("GetExtendedTcpTable failed"), "os_or_collector_error", "error"),
     ],
 )
 def test_each_field_failure_is_evidence(

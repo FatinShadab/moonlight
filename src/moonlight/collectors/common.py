@@ -32,6 +32,8 @@ OS_ERRORS = (
     OSError,
     subprocess.SubprocessError,
     ValueError,
+    # psutil's Windows extension can report native query failures this way.
+    RuntimeError,
 )
 
 
