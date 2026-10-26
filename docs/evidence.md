@@ -13,7 +13,7 @@
 | `reason` | Required, nonblank explanation for `unavailable` or `error`; must be `null` for `observed`. |
 | `timestamp` | Time of the observation, with a timezone. |
 | `subject_type` | Bundle subject: `process` or `storage`. |
-| `subject_id` | Identifier for the investigated subject, such as a PID or storage path. |
+| `subject_id` | Identifier for the investigated subject. For a process, it must combine the PID and process creation time because Windows reuses PIDs. For storage, use a stable storage identifier such as a path. |
 | `items` | Evidence items for the subject. IDs must be unique within the bundle; the validated collection is immutable. |
 
 `EvidenceKind` currently permits `executable_path`, `parent_chain`, `command_line`, `network_activity`, `sha256`, `signature_status`, `folder_size`, `growth_rate`, `file_age`, `file_type`, `duplicate_hash`, and `process_disk_link`. Adding a new kind requires updating the enum and exported schema so downstream modules share one vocabulary. JSON uses the enum values as strings.
