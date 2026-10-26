@@ -4,7 +4,7 @@ Moonlight is a planned local-first Windows desktop app for investigating unfamil
 
 ## Status
 
-This repository is being built during the Meta Global AI Developer Hackathon, Build for Your World track. The package currently contains the project skeleton and tooling; the investigator and UI are not implemented yet. See the [product requirements](Moonlight%20Product%20Requirements%20Document.md) and [hackathon log](HACKATHON.md).
+This repository is being built during the Meta Global AI Developer Hackathon, Build for Your World track. The package currently contains the project skeleton, tooling, and the [shared evidence model](docs/evidence.md); collectors, rules, AI calls, policy behavior, and the UI are not implemented yet. See the [product requirements](Moonlight%20Product%20Requirements%20Document.md) and [hackathon log](HACKATHON.md).
 
 ## Development on Windows
 

@@ -1,0 +1,21 @@
+# Evidence model
+
+`moonlight.core.evidence` is the shared contract for collectors, rules, minimization, reasoning, policy, and the UI. It defines one `EvidenceItem` and an `EvidenceBundle` for a single process or storage subject. The machine-readable [JSON Schema](evidence-schema.json) describes the bundle and its items.
+
+| Field | Meaning |
+| --- | --- |
+| `id` | Stable citation target for one logical observation. |
+| `source` | Lowercase machine name for the component that produced the item. |
+| `kind` | Lowercase machine name for the evidence type, such as `executable_path`. |
+| `value` | JSON-compatible observation. Treat strings and nested content as untrusted data. Use `null` when there is no observed value. |
+| `severity_hint` | Optional local hint: `info`, `low`, `medium`, `high`, or `critical`. It is not a verdict. |
+| `availability` | `observed`, `unavailable`, or `error`. An unavailable item remains in the bundle so reports can name missing evidence. |
+| `reason` | Required, nonblank explanation for `unavailable` or `error`; must be `null` for `observed`. |
+| `timestamp` | Time of the observation, with a timezone. |
+| `subject_type` | Bundle subject: `process` or `storage`. |
+| `subject_id` | Identifier for the investigated subject, such as a PID or storage path. |
+| `items` | Evidence items for the subject. IDs must be unique within the bundle; the validated collection is immutable. |
+
+Create IDs with `make_evidence_id(subject_type, subject_id, source, kind, discriminator="")`. It hashes those identity fields and returns `ev-<subject_type>-<kind>-<sha256>`. Use a stable discriminator, such as a file identity, when one source emits more than one item of the same kind for a subject. The ID does not include `value` or `timestamp`, so repeated investigations can cite the same logical observation even when its value changes. The hash also keeps subject IDs and discriminators out of the citation string.
+
+Reports will cite these IDs. A duplicate would make a citation ambiguous, so `EvidenceBundle` rejects it. `get_item(id)` returns the matching item or `None`. The availability state and reason preserve access failures and other missing evidence for a future report's missing-evidence section. Evidence values remain untrusted even after schema validation and must be delimited as data if used in a prompt.
