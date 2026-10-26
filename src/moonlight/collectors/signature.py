@@ -21,6 +21,8 @@ SignatureState = Literal["signed_valid", "signed_invalid", "unsigned", "unavaila
 # read as UTF-8 data; it is never substituted into code or parsed as an argument.
 AUTHENTICODE_SCRIPT = """
 $ErrorActionPreference = 'Stop'
+# Use this helper's built-in modules, rather than inherited PowerShell 7 paths.
+$env:PSModulePath = [System.IO.Path]::Combine($PSHOME, 'Modules')
 [Console]::InputEncoding = [System.Text.UTF8Encoding]::new($false)
 $path = [Console]::In.ReadToEnd()
 try {
