@@ -4,7 +4,7 @@ Moonlight is a planned local-first Windows desktop app for investigating unfamil
 
 ## Status
 
-This repository is being built during the Meta Global AI Developer Hackathon, Build for Your World track. The package currently contains the project skeleton, tooling, and the [shared evidence model](docs/evidence.md); collectors, rules, AI calls, policy behavior, and the UI are not implemented yet. See the [product requirements](Moonlight%20Product%20Requirements%20Document.md) and [hackathon log](HACKATHON.md).
+This repository is being built during the Meta Global AI Developer Hackathon, Build for Your World track. The package currently contains the project skeleton, tooling, the [shared evidence model](docs/evidence.md), and [read-only process collection](docs/collectors.md). Rules, AI calls, policy behavior, and the UI are not implemented yet. See the [product requirements](Moonlight%20Product%20Requirements%20Document.md) and [hackathon log](HACKATHON.md).
 
 ## Development on Windows
 
@@ -25,4 +25,4 @@ To enable commit hooks after installing the development dependencies, run `.\.ve
 
 ## Safety baseline
 
-Collectors will be read-only. Any future file action must pass local policy, show a dry-run preview, and require explicit confirmation before moving an eligible file to the Recycle Bin. System and personal-document folders are blocked. See [AGENTS.md](AGENTS.md) for the full rules.
+Collectors are read-only. Any future file action must pass local policy, show a dry-run preview, and require explicit confirmation before moving an eligible file to the Recycle Bin. System and personal-document folders are blocked. See [AGENTS.md](AGENTS.md) for the full rules.
