@@ -60,9 +60,7 @@
           "type": "string"
         },
         "kind": {
-          "pattern": "^[a-z][a-z0-9_-]*$",
-          "title": "Kind",
-          "type": "string"
+          "$ref": "#/$defs/EvidenceKind"
         },
         "reason": {
           "anyOf": [
@@ -79,21 +77,13 @@
         "severity_hint": {
           "anyOf": [
             {
-              "enum": [
-                "info",
-                "low",
-                "medium",
-                "high",
-                "critical"
-              ],
-              "type": "string"
+              "$ref": "#/$defs/SeverityHint"
             },
             {
               "type": "null"
             }
           ],
-          "default": null,
-          "title": "Severity Hint"
+          "default": null
         },
         "source": {
           "pattern": "^[a-z][a-z0-9_-]*$",
@@ -120,7 +110,38 @@
       "title": "EvidenceItem",
       "type": "object"
     },
-    "JsonValue": {}
+    "EvidenceKind": {
+      "description": "Supported categories of process and storage evidence.",
+      "enum": [
+        "executable_path",
+        "parent_chain",
+        "command_line",
+        "network_activity",
+        "sha256",
+        "signature_status",
+        "folder_size",
+        "growth_rate",
+        "file_age",
+        "file_type",
+        "duplicate_hash",
+        "process_disk_link"
+      ],
+      "title": "EvidenceKind",
+      "type": "string"
+    },
+    "JsonValue": {},
+    "SeverityHint": {
+      "description": "Local relevance hint, not a final risk verdict.",
+      "enum": [
+        "info",
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "title": "SeverityHint",
+      "type": "string"
+    }
   },
   "additionalProperties": false,
   "description": "Evidence for one process or storage subject.",

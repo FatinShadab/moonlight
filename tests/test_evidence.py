@@ -9,18 +9,24 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from moonlight.core.evidence import EvidenceBundle, EvidenceItem, make_evidence_id
+from moonlight.core.evidence import (
+    EvidenceBundle,
+    EvidenceItem,
+    EvidenceKind,
+    SeverityHint,
+    make_evidence_id,
+)
 
 
 def sample_item(**overrides: object) -> EvidenceItem:
     data: dict[str, object] = {
         "id": make_evidence_id(
-            "process", "4242", "process_collector", "executable_path"
+            "process", "4242", "process_collector", EvidenceKind.EXECUTABLE_PATH
         ),
         "source": "process_collector",
-        "kind": "executable_path",
+        "kind": EvidenceKind.EXECUTABLE_PATH,
         "value": {"path": "C:/Example/app.exe"},
-        "severity_hint": "info",
+        "severity_hint": SeverityHint.INFO,
         "availability": "observed",
         "reason": None,
         "timestamp": datetime(2026, 10, 27, tzinfo=UTC),
@@ -30,22 +36,24 @@ def sample_item(**overrides: object) -> EvidenceItem:
 
 
 def test_id_is_stable_and_changes_with_identity() -> None:
-    first = make_evidence_id("process", "4242", "process_collector", "executable_path")
+    first = make_evidence_id(
+        "process", "4242", "process_collector", EvidenceKind.EXECUTABLE_PATH
+    )
     assert first == "ev-process-executable_path-fcee12d7"
     assert first == make_evidence_id(
-        "process", "4242", "process_collector", "executable_path"
+        "process", "4242", "process_collector", EvidenceKind.EXECUTABLE_PATH
     )
     assert first != make_evidence_id(
-        "process", "4243", "process_collector", "executable_path"
+        "process", "4243", "process_collector", EvidenceKind.EXECUTABLE_PATH
     )
     assert first != make_evidence_id(
-        "process", "4242", "other_collector", "executable_path"
+        "process", "4242", "other_collector", EvidenceKind.EXECUTABLE_PATH
     )
     assert first != make_evidence_id(
-        "process", "4242", "process_collector", "command_line"
+        "process", "4242", "process_collector", EvidenceKind.COMMAND_LINE
     )
     assert first != make_evidence_id(
-        "process", "4242", "process_collector", "executable_path", "child-1"
+        "process", "4242", "process_collector", EvidenceKind.EXECUTABLE_PATH, "child-1"
     )
     assert "4242" not in first
 
@@ -61,14 +69,24 @@ def test_id_rejects_a_long_digest() -> None:
 
 
 def test_id_discriminator_is_stable_for_repeated_kinds() -> None:
-    one = make_evidence_id("storage", "C:/Temp", "storage_scan", "file_age", "a.txt")
-    two = make_evidence_id("storage", "C:/Temp", "storage_scan", "file_age", "b.txt")
+    one = make_evidence_id(
+        "storage", "C:/Temp", "storage_scan", EvidenceKind.FILE_AGE, "a.txt"
+    )
+    two = make_evidence_id(
+        "storage", "C:/Temp", "storage_scan", EvidenceKind.FILE_AGE, "b.txt"
+    )
     assert one != two
     assert one == make_evidence_id(
-        "storage", "C:/Temp", "storage_scan", "file_age", "a.txt"
+        "storage", "C:/Temp", "storage_scan", EvidenceKind.FILE_AGE, "a.txt"
     )
     assert "C:/Temp" not in one
     assert "a.txt" not in one
+
+
+def test_kind_and_severity_hint_reject_unknown_values() -> None:
+    for field, value in (("kind", "unknown_kind"), ("severity_hint", "urgent")):
+        with pytest.raises(ValidationError):
+            sample_item(**{field: value})
 
 
 def test_bundle_rejects_duplicate_ids() -> None:

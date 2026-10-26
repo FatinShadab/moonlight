@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from enum import StrEnum
 from typing import Literal
 
 from pydantic import (
@@ -18,7 +19,34 @@ from pydantic import (
 
 SubjectType = Literal["process", "storage"]
 Availability = Literal["observed", "unavailable", "error"]
-SeverityHint = Literal["info", "low", "medium", "high", "critical"]
+
+
+class EvidenceKind(StrEnum):
+    """Supported categories of process and storage evidence."""
+
+    EXECUTABLE_PATH = "executable_path"
+    PARENT_CHAIN = "parent_chain"
+    COMMAND_LINE = "command_line"
+    NETWORK_ACTIVITY = "network_activity"
+    SHA256 = "sha256"
+    SIGNATURE_STATUS = "signature_status"
+    FOLDER_SIZE = "folder_size"
+    GROWTH_RATE = "growth_rate"
+    FILE_AGE = "file_age"
+    FILE_TYPE = "file_type"
+    DUPLICATE_HASH = "duplicate_hash"
+    PROCESS_DISK_LINK = "process_disk_link"
+
+
+class SeverityHint(StrEnum):
+    """Local relevance hint, not a final risk verdict."""
+
+    INFO = "info"
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
 
 _NAME_PATTERN = re.compile(r"[a-z][a-z0-9_-]*\Z")
 _ID_PATTERN = r"^ev-(process|storage)-[a-z][a-z0-9_-]*-[0-9a-f]{8}$"
@@ -28,7 +56,7 @@ def make_evidence_id(
     subject_type: SubjectType,
     subject_id: str,
     source: str,
-    kind: str,
+    kind: EvidenceKind,
     discriminator: str = "",
 ) -> str:
     """Return a stable ID for one logical observation on a subject.
@@ -42,13 +70,12 @@ def make_evidence_id(
         raise ValueError("subject_id must not be empty")
     if not _NAME_PATTERN.fullmatch(source):
         raise ValueError("source must be a lowercase machine name")
-    if not _NAME_PATTERN.fullmatch(kind):
-        raise ValueError("kind must be a lowercase machine name")
+    kind = EvidenceKind(kind)
 
-    identity = [subject_type, subject_id, source, kind, discriminator]
+    identity = [subject_type, subject_id, source, kind.value, discriminator]
     canonical = json.dumps(identity, ensure_ascii=False, separators=(",", ":"))
     digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
-    return f"ev-{subject_type}-{kind}-{digest[:8]}"
+    return f"ev-{subject_type}-{kind.value}-{digest[:8]}"
 
 
 class EvidenceItem(BaseModel):
@@ -80,7 +107,7 @@ class EvidenceItem(BaseModel):
 
     id: str = Field(pattern=_ID_PATTERN)
     source: str = Field(pattern=r"^[a-z][a-z0-9_-]*$")
-    kind: str = Field(pattern=r"^[a-z][a-z0-9_-]*$")
+    kind: EvidenceKind
     value: JsonValue
     severity_hint: SeverityHint | None = None
     availability: Availability
