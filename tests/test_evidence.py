@@ -31,10 +31,7 @@ def sample_item(**overrides: object) -> EvidenceItem:
 
 def test_id_is_stable_and_changes_with_identity() -> None:
     first = make_evidence_id("process", "4242", "process_collector", "executable_path")
-    assert first == (
-        "ev-process-executable_path-"
-        "fcee12d76c81336c92bb9207a482f4b0b8e84f1d0bd6455e1f9e2455f9b63e8e"
-    )
+    assert first == "ev-process-executable_path-fcee12d7"
     assert first == make_evidence_id(
         "process", "4242", "process_collector", "executable_path"
     )
@@ -51,6 +48,16 @@ def test_id_is_stable_and_changes_with_identity() -> None:
         "process", "4242", "process_collector", "executable_path", "child-1"
     )
     assert "4242" not in first
+
+
+def test_id_rejects_a_long_digest() -> None:
+    with pytest.raises(ValidationError):
+        sample_item(
+            id=(
+                "ev-process-executable_path-"
+                "fcee12d76c81336c92bb9207a482f4b0b8e84f1d0bd6455e1f9e2455f9b63e8e"
+            )
+        )
 
 
 def test_id_discriminator_is_stable_for_repeated_kinds() -> None:

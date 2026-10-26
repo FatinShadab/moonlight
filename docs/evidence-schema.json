@@ -55,7 +55,7 @@
           "type": "string"
         },
         "id": {
-          "pattern": "^ev-(process|storage)-[a-z][a-z0-9_-]*-[0-9a-f]{64}$",
+          "pattern": "^ev-(process|storage)-[a-z][a-z0-9_-]*-[0-9a-f]{8}$",
           "title": "Id",
           "type": "string"
         },

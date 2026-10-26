@@ -21,7 +21,7 @@ Availability = Literal["observed", "unavailable", "error"]
 SeverityHint = Literal["info", "low", "medium", "high", "critical"]
 
 _NAME_PATTERN = re.compile(r"[a-z][a-z0-9_-]*\Z")
-_ID_PATTERN = r"^ev-(process|storage)-[a-z][a-z0-9_-]*-[0-9a-f]{64}$"
+_ID_PATTERN = r"^ev-(process|storage)-[a-z][a-z0-9_-]*-[0-9a-f]{8}$"
 
 
 def make_evidence_id(
@@ -48,7 +48,7 @@ def make_evidence_id(
     identity = [subject_type, subject_id, source, kind, discriminator]
     canonical = json.dumps(identity, ensure_ascii=False, separators=(",", ":"))
     digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
-    return f"ev-{subject_type}-{kind}-{digest}"
+    return f"ev-{subject_type}-{kind}-{digest[:8]}"
 
 
 class EvidenceItem(BaseModel):
