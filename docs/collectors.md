@@ -21,3 +21,17 @@ an EvidenceBundle identity. Evidence content is untrusted data.
 
 `ProcessAccess` is the mockable read-only interface. `PsutilAccess` implements it
 with [psutil queries](https://psutil.readthedocs.io/en/release-7.2.2/).
+
+## Executable SHA-256
+
+`collect_hash` streams the executable in 1 MiB chunks, with a default 256 MiB
+size limit and a five-second timeout (including helper startup). Limits are
+configurable through `HashLimits`. A dedicated Python helper bounds even a
+blocked open/read call; the target executable is only opened in binary read mode.
+The timeout may stop that owned helper, never the investigated process.
+
+The worker checks the actual byte count and file metadata before and after the
+read. Oversized, changing, inaccessible or missing files produce unavailable
+evidence. No partial digest is returned. Successful values include SHA-256 and
+the size, modified time in nanoseconds, device and inode of the hashed file.
+`HashAccess` and `CommandRunner` allow tests to replace file and subprocess calls.
