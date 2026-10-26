@@ -127,5 +127,7 @@ def test_timestamp_must_include_timezone() -> None:
 
 def test_committed_json_schema_matches_model() -> None:
     schema_path = Path(__file__).resolve().parents[1] / "docs" / "evidence-schema.json"
-    committed = json.loads(schema_path.read_text(encoding="utf-8"))
-    assert committed == EvidenceBundle.model_json_schema()
+    regenerated = json.dumps(
+        EvidenceBundle.model_json_schema(), indent=2, sort_keys=True
+    )
+    assert schema_path.read_text(encoding="utf-8") == regenerated + "\n"
