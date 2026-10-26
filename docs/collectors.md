@@ -35,3 +35,27 @@ read. Oversized, changing, inaccessible or missing files produce unavailable
 evidence. No partial digest is returned. Successful values include SHA-256 and
 the size, modified time in nanoseconds, device and inode of the hashed file.
 `HashAccess` and `CommandRunner` allow tests to replace file and subprocess calls.
+
+## Digital signatures
+
+`SignatureCollector` uses Windows PowerShell's
+[`Get-AuthenticodeSignature -LiteralPath`](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.security/get-authenticodesignature)
+in an argument-list subprocess with a five-second timeout. A constant encoded
+script reads the UTF-8 literal path from stdin, so file names are never interpreted
+as PowerShell code. Queries run without a profile or visible window.
+
+Values contain a `state`: `signed_valid`, `signed_invalid`, `unsigned` or
+`unavailable`. Valid maps to signed_valid; NotSigned to unsigned; HashMismatch,
+NotTrusted and UnknownError with a signer certificate to signed_invalid. An
+unsupported format, incompatible verifier or UnknownError without a signer is
+unavailable. Malformed replies are error evidence. Missing paths, hashes, tools,
+permissions and timeouts retain a reason and unavailable state.
+
+An LRU cache stores up to 128 observed results per collector instance, keyed by
+file hash, modified time in nanoseconds and literal path (catalog signatures may
+be path-dependent). Metadata must match the hashed file before and after each
+query or cache hit. Failures are not cached. Cache lifetime is the collector
+instance's lifetime; create a fresh collector to refresh Windows trust results.
+Metadata checks detect ordinary file changes, not an adversarial replacement
+that preserves all metadata. A signature observation is not a safety verdict.
+`SignatureAccess`, `MetadataAccess` and `CommandRunner` are injectable boundaries.
