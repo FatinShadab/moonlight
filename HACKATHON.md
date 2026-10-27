@@ -42,6 +42,12 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 - Added assembly/CLI tests and a Windows CI smoke check against the runner's own PowerShell process.
 - Collection remains read-only and has no rule evaluation or AI calls.
 
+## 2026-10-27 — Selected-root storage scanner
+
+- Added read-only folder sizes, modification age, extension-based type and size-first duplicate candidates using the P1 evidence schema.
+- Added structured root/relative path references, no-follow Windows guards, explicit unavailable evidence and bounded duplicate hashing.
+- Added temporary-tree tests for size totals, duplicates, hard links, reparse points, permissions, limits and evidence identity.
+
 ## Planned evaluation
 
 The [PRD](Moonlight%20Product%20Requirements%20Document.md) defines process and storage rule metrics, citation coverage, schema validity, ablations, and robustness scenarios. Results will include the labeled-set size and reproduction method when measurements exist. No performance or safety metric is claimed yet.

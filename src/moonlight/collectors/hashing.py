@@ -66,8 +66,14 @@ class HashAccess(Protocol):
 class WorkerHashAccess:
     """A helper process puts a hard timeout around open, stat and read calls."""
 
-    def __init__(self, runner: CommandRunner | None = None) -> None:
+    def __init__(
+        self,
+        runner: CommandRunner | None = None,
+        *,
+        worker_module: str = "moonlight.collectors.hash_worker",
+    ) -> None:
         self.runner = runner if runner is not None else SubprocessRunner()
+        self.worker_module = worker_module
 
     def hash(self, path: str, limits: HashLimits) -> FileHash:
         reply = HashReply.model_validate_json(
@@ -75,7 +81,7 @@ class WorkerHashAccess:
                 [
                     sys.executable,
                     "-m",
-                    "moonlight.collectors.hash_worker",
+                    self.worker_module,
                     str(limits.max_bytes),
                     str(limits.chunk_bytes),
                     path,
