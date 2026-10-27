@@ -26,5 +26,5 @@ jobs:
         run: |
           $bundle = moonlight collect --pid $PID
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $bundle
-          $bundle | python -c "import sys; from moonlight.core.evidence import EvidenceBundle, EvidenceKind; b = EvidenceBundle.model_validate_json(sys.stdin.read()); assert len(b.items) == 9; assert all(i.availability == 'observed' for i in b.items if i.kind in (EvidenceKind.SHA256, EvidenceKind.SIGNATURE_STATUS))"
+          $bundle | python -m moonlight.eval.collection_smoke --pid $PID
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

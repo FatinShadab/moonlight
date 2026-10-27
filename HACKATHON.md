@@ -77,6 +77,23 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 - This feature is local and rules-only, with no AI dependency or action implementation. Confidence is correlation among sampled processes, not a calibrated probability or proof of a writer.
 - Validation: Ruff lint/format checks, strict mypy and all 254 tests pass; confidence scenarios use synthetic snapshots.
 
+## 2026-10-27 — Privacy minimizer
+
+- Added allowlisted, local evidence projection with stable per-payload placeholders for usernames, hosts, private path segments, subjects, roots, addresses, hashes and free-text command arguments.
+- Added bounded command previews with explicit truncation markers and exact JSON/UTF-8 payload bytes separate from the local redaction log. No originals or reversible mappings are logged.
+- Unknown fields and embedded contents, raw timestamps, source/error strings and nonessential identifiers are withheld. Explicit evidence selection and item budgets limit payload scope.
+- Added a final normalized identity leak guard that withholds the entire payload on residual names or unavoidable schema/citation collisions; local rules results remain independent.
+- Added Hypothesis-generated identifier/content privacy invariants, per-kind and CLI tests, and documented the preview contract and limits in `docs/privacy.md`.
+- No model request format, API call, transmission, action or UI implementation was added.
+- Validation: Ruff lint/format checks, strict mypy and all 301 tests pass, including 650 generated privacy cases.
+
+## 2026-10-27 — Windows collection CI timeout regression
+
+- Diagnosed the previous main-branch failure: Authenticode correctly returned unavailable signature evidence after its five-second timeout, but CI incorrectly required an observed signature.
+- Replaced the inline assertion with a tested smoke validator that accepts explicit documented signature unavailability while requiring the complete kind set, requested process, observed executable/hash and consistent signature state; unexpected errors still fail.
+- Removed raw live evidence from CI output and added regression coverage for timeout and malformed/error results. Production collector limits and fallback behavior are unchanged.
+- Validation: Ruff lint/format, strict mypy and all 319 tests pass; the live PowerShell collection smoke pipeline also passes outside sandbox process-query restrictions.
+
 ## Planned evaluation
 
 The [PRD](Moonlight%20Product%20Requirements%20Document.md) defines process and storage rule metrics, citation coverage, schema validity, ablations, and robustness scenarios. Results will include the labeled-set size and reproduction method when measurements exist. No performance or safety metric is claimed yet.

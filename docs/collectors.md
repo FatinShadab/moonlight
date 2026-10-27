@@ -79,3 +79,15 @@ instance's lifetime; create a fresh collector to refresh Windows trust results.
 Metadata checks detect ordinary file changes, not an adversarial replacement
 that preserves all metadata. A signature observation is not a safety verdict.
 `SignatureAccess`, `MetadataAccess` and `CommandRunner` are injectable boundaries.
+
+## Live Windows CI smoke check
+
+CI collects the runner's current PowerShell process and validates the complete
+nine-kind bundle, requested PID, observed executable path and valid observed
+SHA-256 result. Authenticode remains bounded to five seconds: a timeout, access
+denial or unavailable Windows verification is valid missing evidence, reported
+explicitly rather than failing CI for not producing an observed signature.
+Unexpected reasons, collector errors, inconsistent signature states, missing
+kinds and malformed hashes still fail. Deterministic unit tests cover both
+observed signatures and the unavailable fallback. The live smoke step prints
+only a fixed metadata summary, not raw paths, usernames or command lines.
