@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
@@ -68,7 +68,7 @@ def test_tree_sizes_ages_types_and_duplicate_candidates(tmp_path: Path) -> None:
     assert len(report.bundles) == 8
     folder = item_for(report, root, EvidenceKind.FOLDER_SIZE)
     assert folder.availability == "observed"
-    assert isinstance(folder.value, dict)
+    assert isinstance(folder.value, Mapping)
     assert folder.value["size_bytes"] == sum(map(len, contents.values()))
     assert folder.value["complete"] is True
     assert item_for(report, root / "empty", EvidenceKind.FOLDER_SIZE).value == {
@@ -79,21 +79,22 @@ def test_tree_sizes_ages_types_and_duplicate_candidates(tmp_path: Path) -> None:
         "basis": "logical_bytes_excluding_links",
     }
     age = item_for(report, root / "alpha.txt", EvidenceKind.FILE_AGE)
-    assert isinstance(age.value, dict) and age.value["modified_age_seconds"] == 60
+    assert isinstance(age.value, Mapping) and age.value["modified_age_seconds"] == 60
     kind = item_for(report, root / "beta.BIN", EvidenceKind.FILE_TYPE)
-    assert isinstance(kind.value, dict) and kind.value["extension"] == ".bin"
+    assert isinstance(kind.value, Mapping) and kind.value["extension"] == ".bin"
     assert {Path(path) for path in hashes.paths} == {
         root / name for name in ("alpha.txt", "beta.BIN", "gamma.bin")
     }
     assert report.hash_candidates == report.files_hashed == 3
     duplicate = item_for(report, root / "alpha.txt", EvidenceKind.DUPLICATE_HASH)
-    assert isinstance(duplicate.value, dict)
-    assert duplicate.value["matches"] == [
+    assert isinstance(duplicate.value, Mapping)
+    assert duplicate.model_dump(mode="json")["value"]["matches"] == [
         {"root_id": path_id(str(root)), "relative_path": "beta.BIN"}
     ]
     unique_content = item_for(report, root / "gamma.bin", EvidenceKind.DUPLICATE_HASH)
     assert (
-        isinstance(unique_content.value, dict) and unique_content.value["matches"] == []
+        isinstance(unique_content.value, Mapping)
+        and unique_content.model_dump(mode="json")["value"]["matches"] == []
     )
     assert {
         path: (path.read_bytes(), path.stat().st_mtime_ns) for path in contents
@@ -172,7 +173,7 @@ def test_missing_metadata_is_unavailable_and_parent_is_partial(
     )
     folder = item_for(report, tmp_path, EvidenceKind.FOLDER_SIZE)
     assert folder.availability == "unavailable" and folder.reason == "incomplete_tree"
-    assert isinstance(folder.value, dict) and folder.value["size_bytes"] == 2
+    assert isinstance(folder.value, Mapping) and folder.value["size_bytes"] == 2
 
 
 def test_denied_directory_does_not_abort_other_folders(tmp_path: Path) -> None:
@@ -234,7 +235,7 @@ def test_all_reparse_tags_are_skipped_before_enumeration_or_hash(
     )
     folder = item_for(report, tmp_path, EvidenceKind.FOLDER_SIZE)
     assert folder.availability == "observed"
-    assert isinstance(folder.value, dict) and folder.value["excluded_entries"] == 1
+    assert isinstance(folder.value, Mapping) and folder.value["excluded_entries"] == 1
     assert len(report.bundles) == 2
     assert report.bundles[1].items[0].reason == "reparse_point_skipped"
     hashes.hash.assert_not_called()

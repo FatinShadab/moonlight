@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -36,14 +37,14 @@ def _one(bundle: EvidenceBundle | None, kind: EvidenceKind) -> EvidenceItem | No
 def _integer(item: EvidenceItem | None, key: str) -> int | None:
     if item is None or item.availability != "observed":
         return None
-    value = item.value.get(key) if isinstance(item.value, dict) else None
+    value = item.value.get(key) if isinstance(item.value, Mapping) else None
     return value if type(value) is int and 0 <= value <= 2**64 - 1 else None
 
 
 def _folder_path(
     snapshot: DiskSnapshot, item: EvidenceItem
 ) -> tuple[PathReference, Path]:
-    if not isinstance(item.value, dict):
+    if not isinstance(item.value, Mapping):
         raise ValueError("folder evidence requires a structured path")
     reference = PathReference.model_validate(item.value.get("path"))
     root = next(
@@ -88,7 +89,7 @@ def _paths(item: EvidenceItem | None, folder: Path) -> set[Path] | None:
     if (
         item is None
         or item.availability != "observed"
-        or not isinstance(item.value, list)
+        or not isinstance(item.value, (list, tuple))
     ):
         return None
     matched: set[Path] = set()
@@ -283,7 +284,7 @@ def attribute_disk_growth(
             old_count is None
             or count is None
             or any(
-                not isinstance(item.value, dict)
+                not isinstance(item.value, Mapping)
                 or item.value.get("complete") is not True
                 or item.value.get("excluded_entries", 0) != 0
                 for item in (old_size, size)

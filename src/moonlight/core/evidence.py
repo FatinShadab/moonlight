@@ -8,7 +8,8 @@ import re
 from collections.abc import Mapping
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Literal, Self
+from types import MappingProxyType
+from typing import Any, Literal, Self, cast
 
 from pydantic import (
     AwareDatetime,
@@ -16,6 +17,7 @@ from pydantic import (
     ConfigDict,
     Field,
     JsonValue,
+    field_serializer,
     model_validator,
 )
 
@@ -59,67 +61,20 @@ _NAME_PATTERN = re.compile(r"[a-z][a-z0-9_-]*\Z")
 _ID_PATTERN = r"^ev-(process|storage)-[a-z][a-z0-9_-]*-[0-9a-f]{8}$"
 
 
-class _FrozenDict(dict[str, JsonValue]):
-    """Keep the JSON dictionary read interface without mutable operations."""
-
-    def __copy__(self) -> Self:
-        return self
-
-    def __deepcopy__(self, memo: dict[int, Any]) -> Self:
-        return self
-
-    def _immutable(self, *args: Any, **kwargs: Any) -> None:
-        raise TypeError("evidence values are immutable")
-
-    __setitem__ = _immutable
-    __delitem__ = _immutable
-    clear = _immutable
-    pop = _immutable
-    setdefault = _immutable
-    update = _immutable
-
-    def popitem(self) -> tuple[str, JsonValue]:
-        raise TypeError("evidence values are immutable")
-
-    def __ior__(self, other: Any) -> Self:  # type: ignore[override,misc]
-        raise TypeError("evidence values are immutable")
-
-
-class _FrozenList(list[JsonValue]):
-    """Keep the JSON list read interface without mutable operations."""
-
-    def __copy__(self) -> Self:
-        return self
-
-    def __deepcopy__(self, memo: dict[int, Any]) -> Self:
-        return self
-
-    def _immutable(self, *args: Any, **kwargs: Any) -> None:
-        raise TypeError("evidence values are immutable")
-
-    __setitem__ = _immutable
-    __delitem__ = _immutable
-    append = _immutable
-    clear = _immutable
-    extend = _immutable
-    insert = _immutable
-    pop = _immutable
-    remove = _immutable
-    reverse = _immutable
-    sort = _immutable
-
-    def __iadd__(self, other: Any) -> Self:  # type: ignore[override,misc]
-        raise TypeError("evidence values are immutable")
-
-    def __imul__(self, other: Any) -> Self:  # type: ignore[misc]
-        raise TypeError("evidence values are immutable")
-
-
 def _freeze_value(value: JsonValue) -> JsonValue:
-    if isinstance(value, dict):
-        return _FrozenDict({key: _freeze_value(child) for key, child in value.items()})
-    if isinstance(value, list):
-        return _FrozenList(_freeze_value(child) for child in value)
+    if isinstance(value, Mapping):
+        frozen = {key: _freeze_value(child) for key, child in value.items()}
+        return cast(JsonValue, MappingProxyType(frozen))
+    if isinstance(value, (list, tuple)):
+        return cast(JsonValue, tuple(_freeze_value(child) for child in value))
+    return value
+
+
+def _plain_value(value: JsonValue) -> JsonValue:
+    if isinstance(value, Mapping):
+        return {key: _plain_value(child) for key, child in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_plain_value(child) for child in value]
     return value
 
 
@@ -129,7 +84,7 @@ def value_exceeds_size_limit(value: JsonValue) -> bool:
     encoder = json.JSONEncoder(
         ensure_ascii=False, separators=(",", ":"), allow_nan=True
     )
-    for part in encoder.iterencode(value):
+    for part in encoder.iterencode(_plain_value(value)):
         size += len(part.encode("utf-8"))
         if size > MAX_EVIDENCE_VALUE_BYTES:
             return True
@@ -211,11 +166,20 @@ class EvidenceItem(BaseModel):
         object.__setattr__(self, "value", _freeze_value(self.value))
         return self
 
+    @field_serializer("value")
+    def serialize_value(self, value: JsonValue) -> JsonValue:
+        return _plain_value(value)
+
+    def __deepcopy__(self, memo: dict[int, Any] | None = None) -> Self:
+        """Immutable items can be shared when a bundle is deep-copied."""
+        return self
+
     def model_copy(
         self, *, update: Mapping[str, Any] | None = None, deep: bool = False
     ) -> Self:
         """Freeze values introduced through Pydantic's unvalidated copy API."""
-        copied = super().model_copy(update=update, deep=deep)
+        # The only container field is already immutable, so it can be shared.
+        copied = super().model_copy(update=update, deep=False)
         if copied.availability == "observed" and value_exceeds_size_limit(copied.value):
             raise ValueError("value_too_large")
         object.__setattr__(copied, "value", _freeze_value(copied.value))
@@ -240,7 +204,7 @@ def bounded_evidence_item(
         id=id,
         source=source,
         kind=kind,
-        value=value,
+        value=_plain_value(value),
         severity_hint=severity_hint,
         availability=availability,
         reason=reason,

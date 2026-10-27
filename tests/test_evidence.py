@@ -98,10 +98,13 @@ def test_bundle_rejects_duplicate_ids() -> None:
 
 
 def test_bundle_lookup_and_json_round_trip() -> None:
-    item = sample_item()
+    item = sample_item(value={"nested": [1, 2]})
     bundle = EvidenceBundle(subject_type="process", subject_id="4242", items=(item,))
     restored = EvidenceBundle.model_validate_json(bundle.model_dump_json())
     assert restored == bundle
+    assert bundle.model_copy(deep=True).model_dump(mode="json") == bundle.model_dump(
+        mode="json"
+    )
     assert isinstance(restored.items, tuple)
     assert restored.get_item(item.id) == item
     assert restored.get_item("ev-process-missing") is None
@@ -114,18 +117,20 @@ def test_nested_values_are_frozen_without_changing_json() -> None:
     assert item.model_dump(mode="json")["value"] == {
         "outer": [{"name": "before", "numbers": [1, 2]}]
     }
-    outer = cast(dict[str, Any], item.value)
-    nested = cast(list[Any], outer["outer"])
-    leaf = cast(dict[str, Any], nested[0])
-    with pytest.raises(TypeError, match="immutable"):
+    outer = cast(Any, item.value)
+    nested = outer["outer"]
+    leaf = nested[0]
+    with pytest.raises(TypeError):
         leaf["name"] = "changed"
-    with pytest.raises(TypeError, match="immutable"):
+    with pytest.raises(TypeError):
+        dict.__setitem__(leaf, "name", "changed")
+    with pytest.raises(AttributeError):
         nested.append("changed")
-    with pytest.raises(TypeError, match="immutable"):
-        cast(list[Any], leaf["numbers"])[0] = 9
+    with pytest.raises(TypeError):
+        leaf["numbers"][0] = 9
     copied = item.model_copy(update={"value": {"nested": [1, 2]}})
-    with pytest.raises(TypeError, match="immutable"):
-        cast(list[Any], cast(dict[str, Any], copied.value)["nested"]).append(3)
+    with pytest.raises(AttributeError):
+        cast(Any, copied.value)["nested"].append(3)
     deep_copy = item.model_copy(deep=True)
     assert (
         deep_copy.model_dump(mode="json")["value"]

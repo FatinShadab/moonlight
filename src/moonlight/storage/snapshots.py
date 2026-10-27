@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Mapping
 from contextlib import closing
 from datetime import datetime
 from pathlib import Path
@@ -57,7 +58,7 @@ def _growth(
     failure: str | None = None,
 ) -> EvidenceItem:
     folder = _folder_item(bundle)
-    assert folder is not None and isinstance(folder.value, dict)
+    assert folder is not None and isinstance(folder.value, Mapping)
     path = folder.value["path"]
     reason = failure
     value: dict[str, JsonValue] = {
@@ -203,9 +204,9 @@ class SQLiteSnapshotStore:
             if folder is None:
                 bundles.append(bundle)
                 continue
-            assert isinstance(folder.value, dict)
+            assert isinstance(folder.value, Mapping)
             path = folder.value["path"]
-            assert isinstance(path, dict) and isinstance(path["root_id"], str)
+            assert isinstance(path, Mapping) and isinstance(path["root_id"], str)
             connection.execute(
                 "INSERT INTO folder_sizes(scan_id, subject_id, size_bytes, complete) "
                 "VALUES (?, ?, ?, ?)",

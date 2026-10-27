@@ -57,7 +57,7 @@ def test_success_and_stable_identity(process: Mock) -> None:
     assert bundle.subject_id == "42:1700000000.125"
     assert len(bundle.items) == 7
     assert all(item.availability == "observed" for item in bundle.items)
-    values = {item.kind: item.value for item in bundle.items}
+    values = {item.kind: item.model_dump(mode="json")["value"] for item in bundle.items}
     assert values[EvidenceKind.EXECUTABLE_PATH] == "C:/Example/app.exe"
     assert values[EvidenceKind.PARENT_CHAIN] == []
     assert values[EvidenceKind.COMMAND_LINE] == process.cmdline.return_value
@@ -219,7 +219,7 @@ def test_optional_open_files_are_guarded_read_only_queries(process: Mock) -> Non
     bundle = collect_process(42, include_open_files=True)
     assert isinstance(bundle, EvidenceBundle)
     opened = next(i for i in bundle.items if i.kind == EvidenceKind.OPEN_FILES)
-    assert opened.value == ["C:/Example/cache/log.bin"]
+    assert opened.model_dump(mode="json")["value"] == ["C:/Example/cache/log.bin"]
     assert opened.availability == "observed"
     process.kill.assert_not_called()
     process.terminate.assert_not_called()

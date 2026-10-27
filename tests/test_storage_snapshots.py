@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import Mock
@@ -35,7 +36,7 @@ def test_persists_and_computes_growth_between_scans(tmp_path: Path) -> None:
     )
     growth = item_for(second, root, EvidenceKind.GROWTH_RATE)
     assert growth.availability == "observed"
-    assert isinstance(growth.value, dict)
+    assert isinstance(growth.value, Mapping)
     assert growth.value["delta_bytes"] == 10
     assert growth.value["bytes_per_second"] == 1
     assert growth.id == item_for(first, root, EvidenceKind.GROWTH_RATE).id
@@ -45,7 +46,7 @@ def test_persists_and_computes_growth_between_scans(tmp_path: Path) -> None:
         StorageScanner().scan([str(root)], timestamp=START + timedelta(seconds=20))
     )
     growth = item_for(third, root, EvidenceKind.GROWTH_RATE)
-    assert isinstance(growth.value, dict) and growth.value["delta_bytes"] == -14
+    assert isinstance(growth.value, Mapping) and growth.value["delta_bytes"] == -14
 
 
 def test_incomplete_snapshots_never_become_false_growth(tmp_path: Path) -> None:
