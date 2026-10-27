@@ -1,0 +1,18 @@
+{
+  "platform": "Windows-11-10.0.26300-SP0",
+  "python": "3.12.14",
+  "files": 1008,
+  "directories": 41,
+  "logical_bytes": 1785644,
+  "duplicate_candidates": 8,
+  "files_hashed_per_scan": 8,
+  "seconds": [
+    9.619128299993463,
+    9.626945099997101,
+    10.086580700008199
+  ],
+  "median_seconds": 9.626945099997101,
+  "includes": "enumeration, metadata, helper startup/hashing, SQLite, classification",
+  "excludes": "fixture creation and JSON serialization",
+  "cache_note": "three consecutive scans; filesystem cache not cleared"
+}

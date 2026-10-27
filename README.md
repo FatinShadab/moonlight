@@ -4,7 +4,7 @@ Moonlight is a planned local-first Windows desktop app for investigating unfamil
 
 ## Status
 
-This repository is being built during the Meta Global AI Developer Hackathon, Build for Your World track. The package currently contains the project skeleton, tooling, the [shared evidence model](docs/evidence.md), and [read-only process collection](docs/collectors.md). Rules, AI calls, policy behavior, and the UI are not implemented yet. See the [product requirements](Moonlight%20Product%20Requirements%20Document.md) and [hackathon log](HACKATHON.md).
+This repository is being built during the Meta Global AI Developer Hackathon, Build for Your World track. The package contains tooling, the [shared evidence model](docs/evidence.md), [read-only process collection](docs/collectors.md), and a [storage investigator](docs/storage.md) with local size history and conservative classification rules. AI calls, action policy execution and the UI are not implemented yet. See the [product requirements](Moonlight%20Product%20Requirements%20Document.md) and [hackathon log](HACKATHON.md).
 
 ## Development on Windows
 
@@ -35,6 +35,19 @@ for unavailable fields. If the PID's creation time cannot be read, it prints a
 structured collection error and exits with status 1. A bundle with unavailable
 items still exits with status 0. No administrator elevation, rules or AI calls
 are performed. See [collector behavior and limits](docs/collectors.md).
+
+## Investigate selected storage roots
+
+```powershell
+moonlight storage --root "D:\Downloads" --root "D:\Projects" --snapshots "C:\MoonlightData\sizes.sqlite3"
+```
+
+The snapshot file's parent directory must already exist and be outside the
+selected roots. Scanned files are never modified; the explicit SQLite database
+stores local folder-size history. JSON output contains P1 evidence bundles,
+growth observations and `clearly_safe`, `review_first`, `do_not_touch` labels.
+Protection always overrides cache labels. No cleanup action is implemented.
+See [storage behavior, limits and benchmark](docs/storage.md).
 
 ## Safety baseline
 

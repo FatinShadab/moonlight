@@ -7,6 +7,7 @@ import os
 import stat
 import sys
 from collections.abc import Callable, Sequence
+from contextlib import AbstractContextManager
 from typing import BinaryIO
 
 from moonlight.collectors.common import (
@@ -25,7 +26,7 @@ def hash_file(
     path: str,
     limits: HashLimits,
     *,
-    open_file: Callable[[str], BinaryIO] = _open_binary,
+    open_file: Callable[[str], AbstractContextManager[BinaryIO]] = _open_binary,
     stat_file: Callable[[int], os.stat_result] = os.fstat,
 ) -> FileHash:
     """Stream at most max_bytes + 1, checking both metadata and actual size."""
@@ -52,13 +53,17 @@ def hash_file(
     return FileHash(sha256=digest.hexdigest(), stamp=stamp)
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(
+    argv: Sequence[str] | None = None,
+    *,
+    open_file: Callable[[str], AbstractContextManager[BinaryIO]] = _open_binary,
+) -> int:
     args = list(argv if argv is not None else sys.argv[1:])
     try:
         if len(args) != 3:
             raise ValueError("expected size limit, chunk size and path")
         limits = HashLimits(max_bytes=int(args[0]), chunk_bytes=int(args[1]))
-        reply = HashReply(result=hash_file(args[2], limits))
+        reply = HashReply(result=hash_file(args[2], limits, open_file=open_file))
     except OS_ERRORS as error:
         failure = failure_for(error)
         reply = HashReply(
