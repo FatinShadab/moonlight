@@ -16,6 +16,12 @@ about 31 seconds apart while each writer was running. I used the documented
 PowerShell `disk-snapshot ... | Set-Content -Encoding UTF8` form, with snapshot
 JSON outside the selected folder, then ran `moonlight disk-link`.
 
+The decoy now defaults to a 128 MiB total write cap and a 60-second time cap;
+`--max-bytes` and `--seconds` can set smaller bounds for controlled runs. It
+refuses to start below 1 GiB free on the target drive. Its temporary directory
+and dummy file are removed on exit, including exceptions and Ctrl+C, so saved
+snapshots must remain outside that directory.
+
 | Run | Folder growth and process write delta | Open-file evidence | Result |
 | --- | --- | --- | --- |
 | File held open | 80,740,352 B growth; 79,691,776 B write delta; ratio 0.987; about 2.51 MiB/s growth. | `dummy.bin` present at both endpoints. | `high`, `path_and_write_correlation`. |

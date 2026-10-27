@@ -114,6 +114,12 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 - Recorded evidence IDs, timings, counter limits, and an unimplemented low-capped path-hint option in `docs/limitations.md`. No raw local snapshots were committed.
 - Validation: 346 tests, Ruff lint/format, strict mypy, and a separate strict mypy check of the decoy fixture passed.
 
+## 2026-10-27 — Disk-link decoy safety bounds
+
+- Capped the fixture at 128 MiB and 60 seconds by default, with command-line limits for small controlled runs.
+- Added a 1 GiB free-space start guard and guaranteed temporary-folder cleanup on normal exit, exceptions, and Ctrl+C.
+- Added in-process tests using tiny caps; no default-cap decoy run occurs in pytest or CI.
+
 ## Planned evaluation
 
 The [PRD](Moonlight%20Product%20Requirements%20Document.md) defines process and storage rule metrics, citation coverage, schema validity, ablations, and robustness scenarios. Results will include the labeled-set size and reproduction method when measurements exist. No performance or safety metric is claimed yet.
