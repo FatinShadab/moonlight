@@ -1,0 +1,21 @@
+{
+  "thresholds": {
+    "review": 3,
+    "high": 7,
+    "high_independent_groups": 2,
+    "inconclusive_missing_count": 2,
+    "encoded_argument_chars": 160,
+    "heavy_write_bytes": 104857600
+  },
+  "weights": {
+    "system_path_mismatch": 4,
+    "unsigned_user_executable": 3,
+    "invalid_signature": 4,
+    "system_name_lookalike": 2,
+    "unusual_system_parent": 3,
+    "outbound_unsigned_user": 3,
+    "encoded_command": 2,
+    "heavy_temp_writes": 3,
+    "valid_system_signature": -3
+  }
+}
