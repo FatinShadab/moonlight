@@ -4,7 +4,7 @@ Moonlight is a planned local-first Windows desktop app for investigating unfamil
 
 ## Status
 
-This repository is being built during the Meta Global AI Developer Hackathon, Build for Your World track. The package currently contains the project skeleton, tooling, and the [shared evidence model](docs/evidence.md); collectors, rules, AI calls, policy behavior, and the UI are not implemented yet. See the [product requirements](Moonlight%20Product%20Requirements%20Document.md) and [hackathon log](HACKATHON.md).
+This repository is being built during the Meta Global AI Developer Hackathon, Build for Your World track. The package currently contains the project skeleton, tooling, the [shared evidence model](docs/evidence.md), and [read-only process collection](docs/collectors.md). Rules, AI calls, policy behavior, and the UI are not implemented yet. See the [product requirements](Moonlight%20Product%20Requirements%20Document.md) and [hackathon log](HACKATHON.md).
 
 ## Development on Windows
 
@@ -23,6 +23,19 @@ Copy `.env.example` to `.env` when the model integration is implemented, then se
 
 To enable commit hooks after installing the development dependencies, run `.\.venv\Scripts\pre-commit install`.
 
+## Collect a Windows process
+
+```powershell
+moonlight collect --pid 4242
+# Or: .\.venv\Scripts\python -m moonlight collect --pid 4242
+```
+
+The command prints a validated EvidenceBundle as JSON, including explicit reasons
+for unavailable fields. If the PID's creation time cannot be read, it prints a
+structured collection error and exits with status 1. A bundle with unavailable
+items still exits with status 0. No administrator elevation, rules or AI calls
+are performed. See [collector behavior and limits](docs/collectors.md).
+
 ## Safety baseline
 
-Collectors will be read-only. Any future file action must pass local policy, show a dry-run preview, and require explicit confirmation before moving an eligible file to the Recycle Bin. System and personal-document folders are blocked. See [AGENTS.md](AGENTS.md) for the full rules.
+Collectors are read-only. Any future file action must pass local policy, show a dry-run preview, and require explicit confirmation before moving an eligible file to the Recycle Bin. System and personal-document folders are blocked. See [AGENTS.md](AGENTS.md) for the full rules.
