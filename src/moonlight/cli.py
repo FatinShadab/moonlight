@@ -13,6 +13,7 @@ from moonlight.collectors.bundle import collect_evidence
 from moonlight.collectors.process import CollectionError
 from moonlight.core.evidence import EvidenceBundle
 from moonlight.minimizer import MinimizerSettings, PrivacyContext, minimize_evidence
+from moonlight.policy import PolicyLayer, ProposedAction
 from moonlight.rules.process import evaluate_process
 from moonlight.storage.attribution import attribute_disk_growth
 from moonlight.storage.attribution_models import (
@@ -72,6 +73,37 @@ def main(argv: Sequence[str] | None = None) -> int:
     minimize.add_argument("--evidence-id", action="append")
     minimize.add_argument("--max-command-chars", type=int, default=512)
     minimize.add_argument("--max-evidence-items", type=int, default=256)
+    policy_val = commands.add_parser(
+        "policy-validate", help="validate proposed action against safety policy"
+    )
+    policy_val.add_argument("--action-type", required=True)
+    policy_val.add_argument("--target-path")
+    policy_val.add_argument("--target-process")
+    policy_val.add_argument("--target-pid", type=_pid)
+    policy_val.add_argument("--hash-value")
+    policy_val.add_argument("--target-id")
+    policy_val.add_argument("--audit-log")
+    policy_prev = commands.add_parser(
+        "policy-preview", help="preview proposed action dry-run"
+    )
+    policy_prev.add_argument("--action-type", required=True)
+    policy_prev.add_argument("--target-path")
+    policy_prev.add_argument("--target-process")
+    policy_prev.add_argument("--target-pid", type=_pid)
+    policy_prev.add_argument("--hash-value")
+    policy_prev.add_argument("--target-id")
+    policy_prev.add_argument("--audit-log")
+    policy_exec = commands.add_parser(
+        "policy-execute", help="execute confirmed action through policy gates"
+    )
+    policy_exec.add_argument("--action-type", required=True)
+    policy_exec.add_argument("--target-path")
+    policy_exec.add_argument("--target-process")
+    policy_exec.add_argument("--target-pid", type=_pid)
+    policy_exec.add_argument("--hash-value")
+    policy_exec.add_argument("--target-id")
+    policy_exec.add_argument("--confirm", action="store_true", default=False)
+    policy_exec.add_argument("--audit-log")
     args = parser.parse_args(argv)
     if args.command == "minimize":
         try:
@@ -106,6 +138,31 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
         print(minimized_result.model_dump_json(indent=2, ensure_ascii=True))
         return 0
+    if args.command in ("policy-validate", "policy-preview", "policy-execute"):
+        layer = PolicyLayer(log_path=args.audit_log)
+        proposed = ProposedAction(
+            action_type=args.action_type,
+            target_path=args.target_path,
+            target_process=args.target_process,
+            target_pid=args.target_pid,
+            hash_value=args.hash_value,
+            target_id=args.target_id,
+        )
+        if args.command == "policy-validate":
+            decision = layer.validate_action(proposed)
+            print(decision.model_dump_json(indent=2, ensure_ascii=True))
+            return 0 if decision.allowed else 1
+        elif args.command == "policy-preview":
+            preview = layer.preview_action(proposed)
+            print(preview.model_dump_json(indent=2, ensure_ascii=True))
+            return 0 if preview.allowed else 1
+        else:
+            preview = layer.preview_action(proposed)
+            exec_result = layer.execute_action(
+                proposed, preview=preview, confirmed=args.confirm
+            )
+            print(exec_result.model_dump_json(indent=2, ensure_ascii=True))
+            return 0 if exec_result.success else 1
     if args.command == "disk-snapshot":
         try:
             snapshot_result = capture_disk_snapshot(args.root, args.pid)
