@@ -13,6 +13,7 @@ from moonlight.collectors.bundle import collect_evidence
 from moonlight.collectors.process import CollectionError
 from moonlight.core.evidence import EvidenceBundle
 from moonlight.minimizer import MinimizerSettings, PrivacyContext, minimize_evidence
+from moonlight.rules.process import evaluate_process
 from moonlight.storage.attribution import attribute_disk_growth
 from moonlight.storage.attribution_models import (
     AttributionSettings,
@@ -38,6 +39,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     commands = parser.add_subparsers(dest="command", required=True)
     collect = commands.add_parser("collect", help="collect read-only process evidence")
     collect.add_argument("--pid", type=_pid, required=True)
+    rules = commands.add_parser("rules", help="evaluate local process rules as JSON")
+    rules.add_argument("--pid", type=_pid, required=True)
     storage = commands.add_parser(
         "storage", help="explain selected disk usage read-only"
     )
@@ -147,6 +150,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(report.model_dump_json(indent=2, ensure_ascii=True))
         return 0 if report.snapshot_saved else 1
     result = collect_evidence(args.pid)
+    if args.command == "rules" and isinstance(result, EvidenceBundle):
+        print(evaluate_process(result).model_dump_json(indent=2, ensure_ascii=True))
+        return 0
     # ASCII JSON also works when Windows redirects stdout using a legacy codepage.
     print(result.model_dump_json(indent=2, ensure_ascii=True))
     return 1 if isinstance(result, CollectionError) else 0
