@@ -119,6 +119,7 @@
         "start_time",
         "user",
         "io_counters",
+        "open_files",
         "network_activity",
         "sha256",
         "signature_status",

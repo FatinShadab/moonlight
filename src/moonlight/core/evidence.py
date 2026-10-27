@@ -30,6 +30,7 @@ class EvidenceKind(StrEnum):
     START_TIME = "start_time"
     USER = "user"
     IO_COUNTERS = "io_counters"
+    OPEN_FILES = "open_files"
     NETWORK_ACTIVITY = "network_activity"
     SHA256 = "sha256"
     SIGNATURE_STATUS = "signature_status"

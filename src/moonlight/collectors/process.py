@@ -115,6 +115,8 @@ class PsutilAccess:
         elif kind == EvidenceKind.IO_COUNTERS:
             counters = process.io_counters()
             value = {key: int(count) for key, count in counters._asdict().items()}
+        elif kind == EvidenceKind.OPEN_FILES:
+            value = [entry.path for entry in process.open_files()]
         else:
             raise ValueError("unsupported process evidence kind")
         _guard(process, created)
@@ -122,7 +124,10 @@ class PsutilAccess:
 
 
 def collect_process(
-    pid: int, access: ProcessAccess | None = None
+    pid: int,
+    access: ProcessAccess | None = None,
+    *,
+    include_open_files: bool = False,
 ) -> EvidenceBundle | CollectionError:
     """Collect independent fields; one denied field cannot hide other evidence."""
     access = access if access is not None else PsutilAccess()
@@ -148,6 +153,10 @@ def collect_process(
                 kind,
                 partial(access.read, pid, created, kind),
             )
-            for kind in PROCESS_KINDS
+            for kind in (
+                (*PROCESS_KINDS, EvidenceKind.OPEN_FILES)
+                if include_open_files
+                else PROCESS_KINDS
+            )
         ),
     )
