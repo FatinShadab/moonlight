@@ -1,4 +1,4 @@
-"""JSON process collection and local storage investigation, without actions."""
+"""JSON process collection, local storage investigation, and AI reasoning scaffold."""
 
 from __future__ import annotations
 
@@ -13,7 +13,9 @@ from moonlight.collectors.bundle import collect_evidence
 from moonlight.collectors.process import CollectionError
 from moonlight.core.evidence import EvidenceBundle
 from moonlight.minimizer import MinimizerSettings, PrivacyContext, minimize_evidence
+from moonlight.minimizer.models import ModelPayload
 from moonlight.policy import PolicyLayer, ProposedAction
+from moonlight.reasoning import ReasoningConfig, ReasoningOrchestrator
 from moonlight.rules.process import evaluate_process
 from moonlight.storage.attribution import attribute_disk_growth
 from moonlight.storage.attribution_models import (
@@ -73,6 +75,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     minimize.add_argument("--evidence-id", action="append")
     minimize.add_argument("--max-command-chars", type=int, default=512)
     minimize.add_argument("--max-evidence-items", type=int, default=256)
+    investigate_cmd = commands.add_parser(
+        "investigate", help="run schema-validated investigation reasoning report"
+    )
+    investigate_cmd.add_argument(
+        "--input", required=True, help="evidence bundle, model payload, or report JSON"
+    )
+    investigate_cmd.add_argument(
+        "--provider", choices=["mock", "ollama-cloud", "meta"], default=None
+    )
+    investigate_cmd.add_argument(
+        "--fixtures-dir", help="override directory for mock fixture reports"
+    )
+    investigate_cmd.add_argument("--fixture", help="specific fixture report file name")
     policy_val = commands.add_parser(
         "policy-validate", help="validate proposed action against safety policy"
     )
@@ -105,6 +120,40 @@ def main(argv: Sequence[str] | None = None) -> int:
     policy_exec.add_argument("--confirm", action="store_true", default=False)
     policy_exec.add_argument("--audit-log")
     args = parser.parse_args(argv)
+    if args.command == "investigate":
+        try:
+            raw = json.loads(Path(args.input).read_text(encoding="utf-8-sig"))
+            if isinstance(raw, dict) and "untrusted_evidence" in raw:
+                target_evidence: ModelPayload | tuple[EvidenceBundle, ...] = (
+                    ModelPayload.model_validate(raw)
+                )
+            elif isinstance(raw, dict) and "bundles" in raw:
+                bundles_val = raw["bundles"]
+                target_evidence = (
+                    (EvidenceBundle.model_validate(bundles_val),)
+                    if isinstance(bundles_val, dict)
+                    else TypeAdapter(tuple[EvidenceBundle, ...]).validate_python(
+                        bundles_val
+                    )
+                )
+            elif isinstance(raw, dict) and "items" in raw:
+                target_evidence = (EvidenceBundle.model_validate(raw),)
+            else:
+                target_evidence = TypeAdapter(
+                    tuple[EvidenceBundle, ...]
+                ).validate_python(raw)
+        except Exception as error:
+            parser.error(f"invalid or unreadable input evidence: {error}")
+
+        cfg = ReasoningConfig(
+            provider=args.provider or "mock",
+            fixtures_dir=Path(args.fixtures_dir) if args.fixtures_dir else None,
+            default_fixture=args.fixture or "default.json",
+        )
+        orchestrator = ReasoningOrchestrator(config=cfg)
+        rep = orchestrator.investigate(target_evidence)
+        print(rep.model_dump_json(indent=2, ensure_ascii=True))
+        return 0
     if args.command == "minimize":
         try:
             raw = json.loads(Path(args.input).read_text(encoding="utf-8-sig"))
