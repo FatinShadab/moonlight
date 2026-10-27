@@ -4,7 +4,7 @@ Moonlight is a planned local-first Windows desktop app for investigating unfamil
 
 ## Status
 
-This repository is being built during the Meta Global AI Developer Hackathon, Build for Your World track. The package contains tooling, the [shared evidence model](docs/evidence.md), [read-only process collection](docs/collectors.md), and a [storage investigator](docs/storage.md) with local size history and conservative classification rules. AI calls, action policy execution and the UI are not implemented yet. See the [product requirements](Moonlight%20Product%20Requirements%20Document.md) and [hackathon log](HACKATHON.md).
+This repository is being built during the Meta Global AI Developer Hackathon, Build for Your World track. The package contains tooling, the [shared evidence model](docs/evidence.md), [read-only process collection](docs/collectors.md), [local process rules](docs/rules.md), and a [storage investigator](docs/storage.md) with local size history and conservative classification rules. AI calls, action policy execution and the UI are not implemented yet. See the [product requirements](Moonlight%20Product%20Requirements%20Document.md) and [hackathon log](HACKATHON.md).
 
 ## Development on Windows
 
@@ -35,6 +35,12 @@ for unavailable fields. If the PID's creation time cannot be read, it prints a
 structured collection error and exits with status 1. A bundle with unavailable
 items still exits with status 0. No administrator elevation, rules or AI calls
 are performed. See [collector behavior and limits](docs/collectors.md).
+
+Run `moonlight rules --pid 4242` for a local JSON report with rule findings,
+evidence citations, missing evidence, a written tier derivation, and P3 adapter
+findings. It makes no AI call or action decision. Weights and thresholds are in
+`src/moonlight/rules/process_rules.yaml`; regenerate the checked-in rule catalog
+with `python -m moonlight.rules.process_docs`.
 
 ## Investigate selected storage roots
 
