@@ -142,6 +142,8 @@ class Redactor:
     def register_user(self, value: str) -> None:
         if not value:
             return
+        # Even a delimiter-only alias must participate in the final leak guard.
+        self.private_values.add(folded(value))
         parts = re.split(r"[\\/@]", value)
         user = parts[-1] if "@" not in value else parts[0]
         if user:

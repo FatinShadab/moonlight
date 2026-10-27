@@ -412,10 +412,11 @@ def minimize_evidence(
         for data in (check, payload.model_dump(mode="json"))
         for text in _strings(data)
     )
+    envelope = folded(json.dumps(check, ensure_ascii=False, sort_keys=True))
     if any(
         private and private in text
         for private in redactor.private_values
-        for text in strings
+        for text in (*strings, envelope)
     ):
         raise MinimizationError("identity_not_fully_redacted")
     return result

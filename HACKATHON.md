@@ -94,6 +94,13 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 - Removed raw live evidence from CI output and added regression coverage for timeout and malformed/error results. Production collector limits and fallback behavior are unchanged.
 - Validation: Ruff lint/format, strict mypy and all 319 tests pass; the live PowerShell collection smoke pipeline also passes outside sandbox process-query restrictions.
 
+## 2026-10-27 — Bounded immutable evidence
+
+- Deep-froze nested evidence dictionaries and lists after validation while retaining JSON serialization and stable value-independent citation IDs.
+- Limited observed values to 65,536 compact UTF-8 JSON bytes. Oversized collector observations become unavailable evidence with the fixed `value_too_large` reason.
+- Added mutation, serialized-size boundary, nested JSON, collector fallback and round-trip tests; documented the limit in `docs/evidence.md`.
+- Full-suite Hypothesis cases exposed delimiter-only and JSON-escape aliases that were omitted from the existing minimizer leak guard; registered raw aliases, scanned serialized envelopes, and added fail-closed regression tests.
+
 ## Planned evaluation
 
 The [PRD](Moonlight%20Product%20Requirements%20Document.md) defines process and storage rule metrics, citation coverage, schema validity, ablations, and robustness scenarios. Results will include the labeled-set size and reproduction method when measurements exist. No performance or safety metric is claimed yet.

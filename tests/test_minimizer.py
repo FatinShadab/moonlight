@@ -143,6 +143,18 @@ def test_arbitrary_identity_collisions_fail_closed_or_are_fully_absent(
         assert_private_absent(result, user, host)
 
 
+def test_delimiter_only_user_alias_fails_closed() -> None:
+    source = bundle([(EvidenceKind.COMMAND_LINE, ["/"])])
+    with pytest.raises(MinimizationError, match="identity_not_fully_redacted"):
+        minimize_evidence((source,), context=PrivacyContext(usernames=("/",)))
+
+
+def test_json_escape_character_alias_fails_closed() -> None:
+    source = bundle([(EvidenceKind.COMMAND_LINE, ["\\"])])
+    with pytest.raises(MinimizationError, match="identity_not_fully_redacted"):
+        minimize_evidence((source,), context=PrivacyContext(hostnames=("\\",)))
+
+
 @settings(max_examples=150, deadline=None)
 @given(contents=st.text(max_size=500))
 def test_unknown_fields_and_embedded_command_contents_are_never_forwarded(
