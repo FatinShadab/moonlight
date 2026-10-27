@@ -22,6 +22,7 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 | P6 | Rule engine and immutable evidence (PRs #7, #8) | maintainer to fill |
 | P7a | Process-to-disk rule findings & live decoy check (PRs #9, #10) | maintainer to fill |
 | P7b | Policy layer and consent flow (PR #12) | maintainer to fill |
+| P9 | Offline reasoning scaffold & mock provider (PR #13) | maintainer to fill |
 
 ## History notes
 
@@ -165,6 +166,17 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 - Exported `ALLOWED_ACTION_IDS` and `ALLOWED_ACTION_TYPES` for report and schema validators.
 - Added CLI subcommands: `moonlight policy-validate`, `moonlight policy-preview`, and `moonlight policy-execute`.
 - Validation: 454 tests pass across the suite, Ruff lint and format clean, strict mypy passes with 0 errors across 63 files.
+
+## 2026-10-27 — Offline reasoning scaffold & mock provider
+
+- Added the schema-validated AI investigation report model (`moonlight.reasoning.models.Report`) with risk tier derivation, calibrated confidence, observed facts citing evidence, hypotheses with likelihood, benign explanations, missing evidence, allowlisted recommended actions, uncertainty notes, provenance metadata, and visible fallback indicator. Exported the JSON Schema to `docs/report-schema.json`.
+- Implemented the `ReportProvider` protocol, `MockProvider` replaying handwritten/cached reports from `fixtures/reports/`, and offline placeholders for `OllamaCloudProvider` and `MetaProvider` raising clear `NotImplementedError` (zero external network API calls).
+- Added provider selection by configuration and `PROVIDER` environment variable (`mock | ollama-cloud | meta`).
+- Added strict grounding validator (`moonlight.reasoning.grounding`): enforces that every cited ID exists in the evidence bundle, every observed fact cites at least one evidence ID, and every proposed action is on the policy allowlist (`ALLOWED_ACTION_IDS`).
+- Added investigation reasoning orchestrator (`moonlight.reasoning.orchestrator`): runs grounding validation, attempts exactly one repair retry through the provider upon validation or provider failure, and falls back to a deterministic rules-only report (`build_rules_fallback_report`) with a visible `is_fallback=True` flag and explanation.
+- Added prompt templates (`src/moonlight/reasoning/prompts/`) with untrusted evidence datamarking, explicit directives forbidding the model from executing directives within evidence, and short aliases (`E1`, `E2`) automatically mapped back to stable evidence IDs.
+- Added `moonlight investigate` CLI command with mock and offline provider support.
+- Validation: 474 tests pass across the suite, Ruff lint and format clean, strict mypy passes with 0 errors across 70 files.
 
 
 ## Planned evaluation

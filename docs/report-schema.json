@@ -1,0 +1,237 @@
+{
+  "$defs": {
+    "Hypothesis": {
+      "additionalProperties": false,
+      "description": "A plausible explanation or hypothesis regarding observed behaviors.",
+      "properties": {
+        "evidence_ids": {
+          "description": "Cited evidence IDs supporting or informing this hypothesis.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "likelihood": {
+          "description": "Assessed likelihood of this hypothesis (e.g., low, medium, high).",
+          "title": "Likelihood",
+          "type": "string"
+        },
+        "text": {
+          "description": "Hypothesis explaining the activity.",
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text",
+        "likelihood"
+      ],
+      "title": "Hypothesis",
+      "type": "object"
+    },
+    "ObservedFact": {
+      "additionalProperties": false,
+      "description": "An observed factual finding grounded in cited evidence.",
+      "properties": {
+        "evidence_ids": {
+          "description": "Non-empty tuple of cited evidence IDs supporting this fact.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "text": {
+          "description": "Factual description of the observation.",
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text",
+        "evidence_ids"
+      ],
+      "title": "ObservedFact",
+      "type": "object"
+    },
+    "RecommendedAction": {
+      "additionalProperties": false,
+      "description": "A recommended remediation or investigation step.",
+      "properties": {
+        "action_id": {
+          "description": "Action type identifier; must be on the policy allowlist.",
+          "minLength": 1,
+          "title": "Action Id",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "description": "Cited evidence IDs justifying this action recommendation.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "reason": {
+          "description": "Justification for why this action is recommended.",
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action_id",
+        "reason"
+      ],
+      "title": "RecommendedAction",
+      "type": "object"
+    },
+    "ReportMetadata": {
+      "additionalProperties": false,
+      "description": "Provenance and execution metadata for the investigation report.",
+      "properties": {
+        "model": {
+          "description": "Model identifier or engine name used for generation.",
+          "minLength": 1,
+          "title": "Model",
+          "type": "string"
+        },
+        "prompt_version": {
+          "description": "Semantic version of prompt templates used.",
+          "minLength": 1,
+          "title": "Prompt Version",
+          "type": "string"
+        },
+        "provider": {
+          "description": "Provider that generated this report (e.g. 'mock', 'meta', 'rules_only_fallback').",
+          "minLength": 1,
+          "title": "Provider",
+          "type": "string"
+        },
+        "timestamp": {
+          "description": "Timezone-aware timestamp when this report was produced.",
+          "format": "date-time",
+          "title": "Timestamp",
+          "type": "string"
+        }
+      },
+      "required": [
+        "provider",
+        "model",
+        "prompt_version",
+        "timestamp"
+      ],
+      "title": "ReportMetadata",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Schema-validated investigation report for processes and storage.",
+  "properties": {
+    "benign_explanations": {
+      "description": "Plausible benign alternatives to avoid false positives.",
+      "items": {
+        "type": "string"
+      },
+      "title": "Benign Explanations",
+      "type": "array"
+    },
+    "confidence": {
+      "description": "Confidence score in [0.0, 1.0] for the assessed risk tier.",
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Confidence",
+      "type": "number"
+    },
+    "fallback_reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Reason for falling back to local rules-only mode, if applicable.",
+      "title": "Fallback Reason"
+    },
+    "hypotheses": {
+      "description": "Hypotheses explaining the observed process or disk activity.",
+      "items": {
+        "$ref": "#/$defs/Hypothesis"
+      },
+      "title": "Hypotheses",
+      "type": "array"
+    },
+    "is_fallback": {
+      "default": false,
+      "description": "Visible flag indicating a local rules-only fallback report.",
+      "title": "Is Fallback",
+      "type": "boolean"
+    },
+    "metadata": {
+      "$ref": "#/$defs/ReportMetadata",
+      "description": "Provenance metadata including provider, model, prompt version, and timestamp."
+    },
+    "missing_evidence": {
+      "description": "Key evidence kinds or queries that were unavailable or missing.",
+      "items": {
+        "type": "string"
+      },
+      "title": "Missing Evidence",
+      "type": "array"
+    },
+    "observed_facts": {
+      "description": "Observed factual claims, each citing at least one valid evidence ID.",
+      "items": {
+        "$ref": "#/$defs/ObservedFact"
+      },
+      "title": "Observed Facts",
+      "type": "array"
+    },
+    "recommended_actions": {
+      "description": "Recommended safe next steps from the policy allowlist.",
+      "items": {
+        "$ref": "#/$defs/RecommendedAction"
+      },
+      "title": "Recommended Actions",
+      "type": "array"
+    },
+    "risk_tier": {
+      "description": "Overall assessed risk tier: low, review, high, or inconclusive.",
+      "enum": [
+        "low",
+        "review",
+        "high",
+        "inconclusive"
+      ],
+      "title": "Risk Tier",
+      "type": "string"
+    },
+    "summary": {
+      "description": "Concise executive summary of findings and risk assessment.",
+      "minLength": 1,
+      "title": "Summary",
+      "type": "string"
+    },
+    "uncertainty_notes": {
+      "default": "",
+      "description": "Discussion of uncertainties, gaps, or caveats in the evidence.",
+      "title": "Uncertainty Notes",
+      "type": "string"
+    }
+  },
+  "required": [
+    "summary",
+    "risk_tier",
+    "confidence",
+    "metadata"
+  ],
+  "title": "Report",
+  "type": "object"
+}
