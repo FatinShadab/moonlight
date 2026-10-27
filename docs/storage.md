@@ -39,3 +39,25 @@ Filesystem operations are injectable through `FileSystem` and `HashAccess`.
 The Windows handle behavior follows Microsoft's
 [CreateFile documentation](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew)
 and [reparse-point guidance](https://learn.microsoft.com/en-us/windows/win32/fileio/reparse-points-and-file-operations).
+
+## Local size history
+
+`SQLiteSnapshotStore` writes only the explicitly selected local SQLite file and
+SQLite's adjacent transaction files. Its existing parent directory must be
+outside every selected root and cannot traverse links; UNC database paths,
+symlinks, reparse points and hard-linked database files are rejected. Scanned
+entries are never written. No directory is created implicitly.
+
+Snapshots store root/subject IDs, timestamps, logical folder sizes and completion
+flags, without raw paths or file contents. A transaction reads the most recent
+snapshot for each selected root, computes growth and saves the new scan together.
+Growth values include byte deltas (which may be negative), elapsed seconds and
+bytes per second. The first scan, a newly observed folder, a changed root scope,
+an incomplete current/previous total, or a non-positive time interval produces
+unavailable growth with a reason. An older complete scan is not silently used
+in place of the latest incomplete scan.
+
+Database errors preserve current scan evidence and produce unavailable growth.
+The database persists history across runs; no retention or deletion job runs.
+Observations are sequential and changing files can affect totals: this is not
+an atomic filesystem snapshot or a measurement of allocated space.

@@ -48,6 +48,12 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 - Added structured root/relative path references, no-follow Windows guards, explicit unavailable evidence and bounded duplicate hashing.
 - Added temporary-tree tests for size totals, duplicates, hard links, reparse points, permissions, limits and evidence identity.
 
+## 2026-10-27 — Storage size snapshots
+
+- Added transactional local SQLite snapshots outside selected roots, with path-free size history and average growth between comparable scans.
+- Added unavailable growth for first/incomplete scans, changed root scope, invalid time intervals and database failures.
+- Added SQLite persistence, rollback, shrinkage and destination-containment tests, including a hard-linked destination that cannot modify a scanned file.
+
 ## Planned evaluation
 
 The [PRD](Moonlight%20Product%20Requirements%20Document.md) defines process and storage rule metrics, citation coverage, schema validity, ablations, and robustness scenarios. Results will include the labeled-set size and reproduction method when measurements exist. No performance or safety metric is claimed yet.
