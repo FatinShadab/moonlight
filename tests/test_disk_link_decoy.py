@@ -6,7 +6,6 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-
 from fixtures import disk_link_decoy
 
 
@@ -47,7 +46,9 @@ def test_time_cap_and_cleanup(
         SimpleNamespace(monotonic=lambda: clock[0], sleep=sleep),
     )
 
-    written = disk_link_decoy.run_decoy(tmp_path, mode, 4 * len(disk_link_decoy.CHUNK), 0.2)
+    written = disk_link_decoy.run_decoy(
+        tmp_path, mode, 4 * len(disk_link_decoy.CHUNK), 0.2
+    )
 
     assert written == len(disk_link_decoy.CHUNK)
     assert clock[0] == 0.2

@@ -24,7 +24,9 @@ def run_decoy(parent: Path, mode: Mode, max_bytes: int, seconds: float) -> int:
     with tempfile.TemporaryDirectory(prefix="disk-link-decoy-", dir=parent) as name:
         folder = Path(name)
         if shutil.disk_usage(folder).free < MIN_FREE_BYTES:
-            raise SystemExit("Disk-link decoy needs at least 1 GiB free on the target drive.")
+            raise SystemExit(
+                "Disk-link decoy needs at least 1 GiB free on the target drive."
+            )
 
         target = folder / "dummy.bin"
         print(folder, flush=True)
@@ -36,7 +38,9 @@ def run_decoy(parent: Path, mode: Mode, max_bytes: int, seconds: float) -> int:
             with target.open("ab", buffering=0) as output:
                 while total_bytes < max_bytes and time.monotonic() < deadline:
                     total_bytes += output.write(CHUNK[: max_bytes - total_bytes])
-                    time.sleep(min(INTERVAL_SECONDS, max(0.0, deadline - time.monotonic())))
+                    time.sleep(
+                        min(INTERVAL_SECONDS, max(0.0, deadline - time.monotonic()))
+                    )
         else:
             while total_bytes < max_bytes and time.monotonic() < deadline:
                 with target.open("ab", buffering=0) as output:
