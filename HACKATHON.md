@@ -21,6 +21,7 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 | P5 | Privacy minimizer (PR #6) | maintainer to fill |
 | P6 | Rule engine and immutable evidence (PRs #7, #8) | maintainer to fill |
 | P7a | Process-to-disk rule findings & live decoy check (PRs #9, #10) | maintainer to fill |
+| P7b | Policy layer and consent flow (PR #12) | maintainer to fill |
 
 ## History notes
 
@@ -151,6 +152,19 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 - Process-to-disk comparisons now run local P3 rules on AFTER process evidence, remap citations to versioned AFTER IDs, and join findings to process comparisons and selected writers by exact PID plus creation time.
 - The optional supplied-findings adapter remains available. Standard disk snapshots omit hash and signature observations, so only rules supported by their observed evidence can match.
 - Added synthetic matching, no-match, PID-reuse, and unrelated-process coverage. No AI call or action path was added.
+
+
+## 2026-10-27 — Policy layer and consent flow
+
+- Added the deterministic policy layer (`moonlight.policy`) gating all proposed remediation actions with a strict allowlist: `open_file_location`, `copy_hash_to_clipboard`, `move_to_recycle_bin` (dry-run preview and explicit confirmation required), and `mark_reviewed`. Process termination and permanent deletion are strictly prohibited and structurally rejected.
+- Protected Windows directories, Program Files, user personal document folders (Documents, Desktop, Pictures, Music, Videos, OneDrive), system volume folders, and critical Windows system processes (`System`, `lsass.exe`, `csrss.exe`, `services.exe`, `smss.exe`, `explorer.exe`, etc.) and system PIDs (0, 4) from being targeted.
+- Added strict path safety normalization: rejects path traversal (`..`), UNC / network paths, Windows DOS device paths/names (`\\.\`, `\\?\`, `CON`, `NUL`, `AUX`), and symlink escapes.
+- Added mandatory dry-run previews detailing item counts, sizes, and destinations; requires explicit user confirmation before executing `move_to_recycle_bin` via `send2trash` only.
+- Added execution re-validation and TOCTOU guards detecting modified files, swapped symlinks, or changed targets between preview and execution.
+- Added local append-only JSON lines audit logging (`policy_audit.jsonl`) for every attempted action.
+- Exported `ALLOWED_ACTION_IDS` and `ALLOWED_ACTION_TYPES` for report and schema validators.
+- Added CLI subcommands: `moonlight policy-validate`, `moonlight policy-preview`, and `moonlight policy-execute`.
+- Validation: 454 tests pass across the suite, Ruff lint and format clean, strict mypy passes with 0 errors across 63 files.
 
 
 ## Planned evaluation
