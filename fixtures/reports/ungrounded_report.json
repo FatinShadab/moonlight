@@ -1,0 +1,34 @@
+{
+  "summary": "Report citing non-existent hallucinated evidence IDs.",
+  "risk_tier": "high",
+  "confidence": 0.95,
+  "observed_facts": [
+    {
+      "text": "Attacker executable observed downloading remote payload.",
+      "evidence_ids": [
+        "ev-hallucinated-id-99999999"
+      ]
+    }
+  ],
+  "hypotheses": [],
+  "benign_explanations": [],
+  "missing_evidence": [],
+  "recommended_actions": [
+    {
+      "action_id": "open_file_location",
+      "reason": "Examine downloaded payload.",
+      "evidence_ids": [
+        "ev-hallucinated-id-99999999"
+      ]
+    }
+  ],
+  "uncertainty_notes": "",
+  "metadata": {
+    "provider": "mock",
+    "model": "mock-meta-spark",
+    "prompt_version": "1.0.0",
+    "timestamp": "2026-10-27T16:00:00Z"
+  },
+  "is_fallback": false,
+  "fallback_reason": null
+}

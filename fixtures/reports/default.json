@@ -1,0 +1,60 @@
+{
+  "summary": "Process exhibits unverified digital signature and unusual parent process relationship.",
+  "risk_tier": "review",
+  "confidence": 0.85,
+  "observed_facts": [
+    {
+      "text": "The executable is located in a standard Windows directory but lacks a valid digital signature.",
+      "evidence_ids": [
+        "ev-process-executable_path-fcee12d7",
+        "ev-process-signature_status-b2c3d4e5"
+      ]
+    },
+    {
+      "text": "The SHA-256 hash was computed over 4096 bytes and does not match known Windows OS components.",
+      "evidence_ids": [
+        "ev-process-sha256-a1b2c3d4"
+      ]
+    }
+  ],
+  "hypotheses": [
+    {
+      "text": "Potentially an unsigned third-party maintenance utility or modified system tool.",
+      "evidence_ids": [
+        "ev-process-signature_status-b2c3d4e5"
+      ],
+      "likelihood": "medium"
+    }
+  ],
+  "benign_explanations": [
+    "Legitimate developer tool or locally built administrative utility without digital signature."
+  ],
+  "missing_evidence": [
+    "network_activity: Connection monitoring was disabled or unavailable during collection."
+  ],
+  "recommended_actions": [
+    {
+      "action_id": "copy_hash_to_clipboard",
+      "reason": "Allows analyst to check executable SHA-256 against threat intelligence feeds.",
+      "evidence_ids": [
+        "ev-process-sha256-a1b2c3d4"
+      ]
+    },
+    {
+      "action_id": "open_file_location",
+      "reason": "Inspect surrounding directory contents and file properties in File Explorer.",
+      "evidence_ids": [
+        "ev-process-executable_path-fcee12d7"
+      ]
+    }
+  ],
+  "uncertainty_notes": "Absence of network activity data prevents confirming beaconing or C2 communication.",
+  "metadata": {
+    "provider": "mock",
+    "model": "mock-meta-spark",
+    "prompt_version": "1.0.0",
+    "timestamp": "2026-10-27T16:00:00Z"
+  },
+  "is_fallback": false,
+  "fallback_reason": null
+}

@@ -1,0 +1,44 @@
+{
+  "summary": "Repaired investigation report: citations and actions strictly grounded in bundle.",
+  "risk_tier": "review",
+  "confidence": 0.90,
+  "observed_facts": [
+    {
+      "text": "The executable path was verified and recorded from process collection.",
+      "evidence_ids": [
+        "ev-process-executable_path-fcee12d7"
+      ]
+    }
+  ],
+  "hypotheses": [
+    {
+      "text": "Unsigned binary running with standard user permissions.",
+      "evidence_ids": [
+        "ev-process-executable_path-fcee12d7"
+      ],
+      "likelihood": "low"
+    }
+  ],
+  "benign_explanations": [
+    "Internal test binary running in development directory."
+  ],
+  "missing_evidence": [],
+  "recommended_actions": [
+    {
+      "action_id": "mark_reviewed",
+      "reason": "Process behavior matches known internal tooling; marked for review.",
+      "evidence_ids": [
+        "ev-process-executable_path-fcee12d7"
+      ]
+    }
+  ],
+  "uncertainty_notes": "Sufficient evidence for review tier determination.",
+  "metadata": {
+    "provider": "mock",
+    "model": "mock-meta-spark",
+    "prompt_version": "1.0.0",
+    "timestamp": "2026-10-27T16:05:00Z"
+  },
+  "is_fallback": false,
+  "fallback_reason": null
+}

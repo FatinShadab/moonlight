@@ -1,0 +1,5 @@
+{
+  "summary": "Malformed output missing required fields",
+  "risk_tier": "super_critical_unknown_tier",
+  "confidence": "not_a_float"
+}
