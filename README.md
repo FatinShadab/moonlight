@@ -49,6 +49,17 @@ growth observations and `clearly_safe`, `review_first`, `do_not_touch` labels.
 Protection always overrides cache labels. No cleanup action is implemented.
 See [storage behavior, limits and benchmark](docs/storage.md).
 
+## Link fast growth to a process
+
+`moonlight disk-snapshot --root PATH --pid N` captures selected folder sizes,
+process write counters and available open-file paths as JSON. Compare two saved
+captures with `moonlight disk-link --before before.json --after after.json`.
+Results include high/medium/low/unattributed confidence, evidence citations and
+optional supplied P3 security findings joined by PID plus creation time. This
+is a rules-only correlation, limited to selected processes; uncertain matches
+remain unattributed. See the [capture workflow and P3 contract](docs/process-disk-link.md)
+and [limitations](docs/limitations.md).
+
 ## Safety baseline
 
 Collectors are read-only. Any future file action must pass local policy, show a dry-run preview, and require explicit confirmation before moving an eligible file to the Recycle Bin. System and personal-document folders are blocked. See [AGENTS.md](AGENTS.md) for the full rules.
