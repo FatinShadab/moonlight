@@ -107,11 +107,25 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 - Added configurable YAML 1.2 weights and thresholds, four-tier derivation, explicit missing-evidence reporting, and `moonlight rules --pid N` JSON output. Missing hash, path, signature, parent or command evidence caps high at review; two missing key kinds yield inconclusive.
 - Added synthetic positive/negative cases, tier and missing-evidence boundaries, immutable-value and determinism checks, and a generated rule catalog freshness check. No AI or action path is involved.
 
+## 2026-10-27 — Live Windows disk-link decoys
+
+- Added a harmless 60-second fixture with held-open and close-between-writes modes and ran each on Windows using two UTF-8 PowerShell disk snapshots of its temporary folder and exact writer PID.
+- Held-open writes yielded `high` correlation; close-between-writes yielded `unattributed` because `open_files` missed the short-lived handle, despite matching write-byte and folder-growth deltas. An initial launcher-PID selection also abstained as expected.
+- Recorded evidence IDs, timings, counter limits, and an unimplemented low-capped path-hint option in `docs/limitations.md`. No raw local snapshots were committed.
+- Validation: 346 tests, Ruff lint/format, strict mypy, and a separate strict mypy check of the decoy fixture passed.
+
+## 2026-10-27 — Disk-link decoy safety bounds
+
+- Capped the fixture at 128 MiB and 60 seconds by default, with command-line limits for small controlled runs.
+- Added a 1 GiB free-space start guard and guaranteed temporary-folder cleanup on normal exit, exceptions, and Ctrl+C.
+- Added in-process tests using tiny caps; no default-cap decoy run occurs in pytest or CI.
+
 ## 2026-10-27 — P3 findings in disk links
 
 - Process-to-disk comparisons now run local P3 rules on AFTER process evidence, remap citations to versioned AFTER IDs, and join findings to process comparisons and selected writers by exact PID plus creation time.
 - The optional supplied-findings adapter remains available. Standard disk snapshots omit hash and signature observations, so only rules supported by their observed evidence can match.
 - Added synthetic matching, no-match, PID-reuse, and unrelated-process coverage. No AI call or action path was added.
+
 
 ## Planned evaluation
 
