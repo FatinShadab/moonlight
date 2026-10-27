@@ -107,6 +107,12 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 - Added configurable YAML 1.2 weights and thresholds, four-tier derivation, explicit missing-evidence reporting, and `moonlight rules --pid N` JSON output. Missing hash, path, signature, parent or command evidence caps high at review; two missing key kinds yield inconclusive.
 - Added synthetic positive/negative cases, tier and missing-evidence boundaries, immutable-value and determinism checks, and a generated rule catalog freshness check. No AI or action path is involved.
 
+## 2026-10-27 — P3 findings in disk links
+
+- Process-to-disk comparisons now run local P3 rules on AFTER process evidence, remap citations to versioned AFTER IDs, and join findings to process comparisons and selected writers by exact PID plus creation time.
+- The optional supplied-findings adapter remains available. Standard disk snapshots omit hash and signature observations, so only rules supported by their observed evidence can match.
+- Added synthetic matching, no-match, PID-reuse, and unrelated-process coverage. No AI call or action path was added.
+
 ## Planned evaluation
 
 The [PRD](Moonlight%20Product%20Requirements%20Document.md) defines process and storage rule metrics, citation coverage, schema validity, ablations, and robustness scenarios. Results will include the labeled-set size and reproduction method when measurements exist. No performance or safety metric is claimed yet.
