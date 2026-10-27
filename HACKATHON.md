@@ -21,7 +21,7 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 | P5 | Privacy minimizer (PR #6) | maintainer to fill |
 | P6 | Rule engine and immutable evidence (PRs #7, #8) | maintainer to fill |
 | P7a | Process-to-disk rule findings & live decoy check (PRs #9, #10) | maintainer to fill |
-| P7b | Policy layer and consent flow (PR #11) | maintainer to fill |
+| P7b | Policy layer and consent flow (PR #12) | maintainer to fill |
 
 ## History notes
 
