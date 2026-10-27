@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -12,7 +13,7 @@ from fixtures import disk_link_decoy
 @pytest.fixture(autouse=True)
 def ample_space(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        disk_link_decoy.shutil,
+        shutil,
         "disk_usage",
         lambda _folder: SimpleNamespace(free=disk_link_decoy.MIN_FREE_BYTES),
     )
@@ -59,7 +60,7 @@ def test_low_space_refuses_and_cleans_up(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(
-        disk_link_decoy.shutil,
+        shutil,
         "disk_usage",
         lambda _folder: SimpleNamespace(free=disk_link_decoy.MIN_FREE_BYTES - 1),
     )
