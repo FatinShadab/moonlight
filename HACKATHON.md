@@ -101,6 +101,12 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 - Added mutation, serialized-size boundary, nested JSON, collector fallback and round-trip tests; documented the limit in `docs/evidence.md`.
 - Full-suite Hypothesis cases exposed delimiter-only and JSON-escape aliases that were omitted from the existing minimizer leak guard; registered raw aliases, scanned serialized envelopes, and added fail-closed regression tests.
 
+## 2026-10-27 — Local process rules
+
+- Added nine deterministic process rules, including one negative-weight mitigation, with documented rationale and benign alternatives. The rules read immutable evidence only and produce stable citations plus findings compatible with the existing P3 adapter.
+- Added configurable YAML 1.2 weights and thresholds, four-tier derivation, explicit missing-evidence reporting, and `moonlight rules --pid N` JSON output. Missing hash, path, signature, parent or command evidence caps high at review; two missing key kinds yield inconclusive.
+- Added synthetic positive/negative cases, tier and missing-evidence boundaries, immutable-value and determinism checks, and a generated rule catalog freshness check. No AI or action path is involved.
+
 ## Planned evaluation
 
 The [PRD](Moonlight%20Product%20Requirements%20Document.md) defines process and storage rule metrics, citation coverage, schema validity, ablations, and robustness scenarios. Results will include the labeled-set size and reproduction method when measurements exist. No performance or safety metric is claimed yet.
