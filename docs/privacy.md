@@ -120,8 +120,9 @@ order is normalized. Maps live only during a call and are not persisted. Adding
 or removing evidence/context can renumber placeholders. No promise of stable
 cross-session identities or anonymous unlinkability is made.
 
-Before returning, the minimizer scans the decoded payload and local envelope
-for any supplied/discovered username or hostname, including normalized/case
+Before returning, the minimizer scans the decoded payload, local envelope, and
+serialized JSON envelope for any supplied/discovered username or hostname,
+including normalized/case
 variants, schema keys, placeholders and citation IDs. If anything survives, it
 raises a fixed-code `MinimizationError` and returns **no payload**. This also
 handles unavoidable substring collisions: for example, a username `value` would

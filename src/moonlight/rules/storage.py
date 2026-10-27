@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -80,7 +81,7 @@ def classify_storage(
     subjects: list[tuple[EvidenceBundle, PathReference, Path]] = []
     for bundle in report.bundles:
         first = bundle.items[0]
-        assert isinstance(first.value, dict)
+        assert isinstance(first.value, Mapping)
         reference = PathReference.model_validate(first.value["path"])
         path = Path(
             normalized_path(str(roots[reference.root_id] / reference.relative_path))
@@ -109,7 +110,7 @@ def classify_storage(
             category, reason = "do_not_touch", "personal_document_or_container"
         elif not locations.discovery_complete:
             category, reason = "review_first", "protected_location_discovery_incomplete"
-        elif isinstance(bundle.items[0].value, dict) and bundle.items[0].value.get(
+        elif isinstance(bundle.items[0].value, Mapping) and bundle.items[0].value.get(
             "excluded_entries"
         ):
             category, reason = "review_first", "excluded_entries_require_review"

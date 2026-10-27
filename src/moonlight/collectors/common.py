@@ -13,6 +13,7 @@ from moonlight.core.evidence import (
     Availability,
     EvidenceItem,
     EvidenceKind,
+    bounded_evidence_item,
     make_evidence_id,
 )
 
@@ -69,7 +70,7 @@ def evidence(
     except OS_ERRORS as error:
         failure = failure_for(error)
         availability, reason = failure.availability, failure.reason
-    return EvidenceItem(
+    return bounded_evidence_item(
         id=make_evidence_id("process", subject_id, source, kind),
         source=source,
         kind=kind,

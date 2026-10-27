@@ -16,6 +16,7 @@ from moonlight.core.evidence import (
     EvidenceBundle,
     EvidenceItem,
     EvidenceKind,
+    bounded_evidence_item,
     make_evidence_id,
 )
 from moonlight.storage.filesystem import EntryInfo, FileSystem, LocalFileSystem
@@ -67,7 +68,7 @@ def storage_item(
     reason: str | None = None,
 ) -> EvidenceItem:
     state = availability if availability is not None else entry.availability
-    return EvidenceItem(
+    return bounded_evidence_item(
         id=make_evidence_id("storage", entry.subject_id, source, kind),
         source=source,
         kind=kind,

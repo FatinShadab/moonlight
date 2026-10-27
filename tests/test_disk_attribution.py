@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -397,7 +398,9 @@ def test_versioned_citations_are_unique_stable_and_preserve_both_values(
         item for item in items.values() if item.kind == EvidenceKind.IO_COUNTERS
     ]
     assert {
-        item.value["write_bytes"] for item in counters if isinstance(item.value, dict)
+        item.value["write_bytes"]
+        for item in counters
+        if isinstance(item.value, Mapping)
     } == {
         0,
         10 * MIB,
@@ -536,7 +539,7 @@ def test_folder_observation_guards(tmp_path: Path, change: str) -> None:
     after = snapshot(tmp_path, offset=10, size=11 * MIB, count=10 * MIB)
     bundle = after.storage.bundles[0]
     item = bundle.items[0]
-    assert isinstance(item.value, dict)
+    assert isinstance(item.value, Mapping)
     value = dict(item.value)
     updates: dict[str, object] = {}
     if change == "excluded":
@@ -651,7 +654,7 @@ def test_folder_reference_cannot_escape_selected_root(
     after = snapshot(tmp_path, offset=10, size=11 * MIB, count=10 * MIB)
     bundle = after.storage.bundles[0]
     item = bundle.items[0]
-    assert isinstance(item.value, dict)
+    assert isinstance(item.value, Mapping)
     value = dict(item.value)
     value["path"] = {
         "root_id": after.storage.roots[0].root_id,

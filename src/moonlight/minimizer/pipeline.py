@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import math
 import re
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 
 from pydantic import JsonValue
 
@@ -61,10 +61,10 @@ LINK_REASONS = frozenset(
 def _strings(value: JsonValue) -> Iterator[str]:
     if isinstance(value, str):
         yield value
-    elif isinstance(value, list):
+    elif isinstance(value, (list, tuple)):
         for child in value:
             yield from _strings(child)
-    elif isinstance(value, dict):
+    elif isinstance(value, Mapping):
         for key, child in value.items():
             yield key
             yield from _strings(child)
@@ -84,14 +84,14 @@ def _discover(redactor: Redactor, items: tuple[EvidenceItem, ...]) -> None:
         if item.kind in (
             EvidenceKind.COMMAND_LINE,
             EvidenceKind.OPEN_FILES,
-        ) and isinstance(value, list):
+        ) and isinstance(value, (list, tuple)):
             paths.extend(part for part in value if isinstance(part, str))
-        if item.kind == EvidenceKind.PARENT_CHAIN and isinstance(value, list):
+        if item.kind == EvidenceKind.PARENT_CHAIN and isinstance(value, (list, tuple)):
             for parent in value:
-                if isinstance(parent, dict) and isinstance(parent.get("path"), str):
+                if isinstance(parent, Mapping) and isinstance(parent.get("path"), str):
                     paths.append(str(parent["path"]))
-        reference = value.get("path") if isinstance(value, dict) else None
-        if isinstance(reference, dict):
+        reference = value.get("path") if isinstance(value, Mapping) else None
+        if isinstance(reference, Mapping):
             relative = reference.get("relative_path")
             if isinstance(relative, str):
                 paths.append(relative)
@@ -109,7 +109,7 @@ class _Projector:
         self.redactor.event(location, "omit", "unapproved_or_invalid_metadata")
 
     def references(self, value: JsonValue, location: str) -> list[JsonValue]:
-        if not isinstance(value, list):
+        if not isinstance(value, (list, tuple)):
             self.withheld(location)
             return []
         result: list[JsonValue] = []
@@ -121,7 +121,7 @@ class _Projector:
         return result
 
     def path_reference(self, value: JsonValue, location: str) -> JsonValue:
-        if not isinstance(value, dict):
+        if not isinstance(value, Mapping):
             self.withheld(location)
             return None
         root, relative = value.get("root_id"), value.get("relative_path")
@@ -134,7 +134,7 @@ class _Projector:
         }
 
     def numbers(
-        self, value: dict[str, JsonValue], fields: set[str]
+        self, value: Mapping[str, JsonValue], fields: set[str]
     ) -> dict[str, JsonValue]:
         return {
             key: number
@@ -144,12 +144,12 @@ class _Projector:
         }
 
     def network(self, value: JsonValue, location: str) -> JsonValue:
-        if not isinstance(value, list):
+        if not isinstance(value, (list, tuple)):
             self.withheld(location)
             return None
         connections: list[JsonValue] = []
         for entry in value:
-            if not isinstance(entry, dict):
+            if not isinstance(entry, Mapping):
                 self.withheld(location)
                 continue
             result: dict[str, JsonValue] = {}
@@ -158,7 +158,7 @@ class _Projector:
                 if address == []:
                     result[endpoint] = None
                 elif (
-                    isinstance(address, list)
+                    isinstance(address, (list, tuple))
                     and address
                     and isinstance(address[0], str)
                 ):
@@ -203,7 +203,7 @@ class _Projector:
             return self.redactor.path(value, location)
         if (
             kind == EvidenceKind.COMMAND_LINE
-            and isinstance(value, list)
+            and isinstance(value, (list, tuple))
             and all(isinstance(arg, str) for arg in value)
         ):
             return dict(
@@ -213,16 +213,16 @@ class _Projector:
                     self.settings.max_command_chars,
                 )
             )
-        if kind == EvidenceKind.OPEN_FILES and isinstance(value, list):
+        if kind == EvidenceKind.OPEN_FILES and isinstance(value, (list, tuple)):
             return [
                 self.redactor.path(path, location)
                 for path in value
                 if isinstance(path, str)
             ]
-        if kind == EvidenceKind.PARENT_CHAIN and isinstance(value, list):
+        if kind == EvidenceKind.PARENT_CHAIN and isinstance(value, (list, tuple)):
             parents: list[JsonValue] = []
             for parent in value:
-                if not isinstance(parent, dict):
+                if not isinstance(parent, Mapping):
                     self.withheld(location)
                     continue
                 result: dict[str, JsonValue] = {}
@@ -237,7 +237,7 @@ class _Projector:
         if kind == EvidenceKind.START_TIME:
             self.withheld(location)
             return None
-        if not isinstance(value, dict):
+        if not isinstance(value, Mapping):
             self.withheld(location)
             return None
         if kind == EvidenceKind.SIGNATURE_STATUS:
@@ -298,7 +298,9 @@ class _Projector:
             if isinstance(digest, str) and re.fullmatch(r"[0-9a-fA-F]{64}", digest):
                 result["sha256"] = self.redactor.token("HASH", digest, location)
             matches = value.get("matches")
-            if kind == EvidenceKind.DUPLICATE_HASH and isinstance(matches, list):
+            if kind == EvidenceKind.DUPLICATE_HASH and isinstance(
+                matches, (list, tuple)
+            ):
                 result["matches"] = [
                     self.path_reference(peer, location) for peer in matches
                 ]
@@ -412,10 +414,11 @@ def minimize_evidence(
         for data in (check, payload.model_dump(mode="json"))
         for text in _strings(data)
     )
+    envelope = folded(json.dumps(check, ensure_ascii=False, sort_keys=True))
     if any(
         private and private in text
         for private in redactor.private_values
-        for text in strings
+        for text in (*strings, envelope)
     ):
         raise MinimizationError("identity_not_fully_redacted")
     return result

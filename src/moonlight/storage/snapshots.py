@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Mapping
 from contextlib import closing
 from datetime import datetime
 from pathlib import Path
@@ -16,6 +17,7 @@ from moonlight.core.evidence import (
     EvidenceBundle,
     EvidenceItem,
     EvidenceKind,
+    bounded_evidence_item,
     make_evidence_id,
 )
 from moonlight.storage.filesystem import LocalFileSystem
@@ -56,7 +58,7 @@ def _growth(
     failure: str | None = None,
 ) -> EvidenceItem:
     folder = _folder_item(bundle)
-    assert folder is not None and isinstance(folder.value, dict)
+    assert folder is not None and isinstance(folder.value, Mapping)
     path = folder.value["path"]
     reason = failure
     value: dict[str, JsonValue] = {
@@ -89,7 +91,7 @@ def _growth(
                 }
             )
     availability: Availability = "unavailable" if reason is not None else "observed"
-    return EvidenceItem(
+    return bounded_evidence_item(
         id=make_evidence_id(
             "storage", bundle.subject_id, "snapshot_store", EvidenceKind.GROWTH_RATE
         ),
@@ -202,9 +204,9 @@ class SQLiteSnapshotStore:
             if folder is None:
                 bundles.append(bundle)
                 continue
-            assert isinstance(folder.value, dict)
+            assert isinstance(folder.value, Mapping)
             path = folder.value["path"]
-            assert isinstance(path, dict) and isinstance(path["root_id"], str)
+            assert isinstance(path, Mapping) and isinstance(path["root_id"], str)
             connection.execute(
                 "INSERT INTO folder_sizes(scan_id, subject_id, size_bytes, complete) "
                 "VALUES (?, ?, ?, ?)",

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -157,7 +158,7 @@ def test_excluded_links_prevent_a_whole_folder_safe_label(tmp_path: Path) -> Non
     report = StorageScanner().scan([str(tmp_path)])
     bundle = report.bundles[0]
     item = bundle.items[0]
-    assert isinstance(item.value, dict)
+    assert isinstance(item.value, Mapping)
     excluded = item.model_copy(update={"value": {**item.value, "excluded_entries": 1}})
     report = report.model_copy(
         update={"bundles": (bundle.model_copy(update={"items": (excluded,)}),)}

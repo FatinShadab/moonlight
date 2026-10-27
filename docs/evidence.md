@@ -7,7 +7,7 @@
 | `id` | Stable citation target for one logical observation. |
 | `source` | Lowercase machine name for the component that produced the item. |
 | `kind` | `EvidenceKind` enum value naming the observation category. |
-| `value` | JSON-compatible observation. Treat strings and nested content as untrusted data. Use `null` when there is no observed value. |
+| `value` | JSON-compatible observation. Treat strings and nested content as untrusted data. Use `null` when there is no observed value. Nested dictionaries and lists are read-only after validation. |
 | `severity_hint` | Optional `SeverityHint` enum value: `info`, `low`, `medium`, `high`, or `critical`. It is not a verdict. |
 | `availability` | `observed`, `unavailable`, or `error`. An unavailable item remains in the bundle so reports can name missing evidence. |
 | `reason` | Required, nonblank explanation for `unavailable` or `error`; must be `null` for `observed`. |
@@ -21,6 +21,18 @@
 Create IDs with `make_evidence_id(subject_type, subject_id, source, kind, discriminator="")`. It hashes those identity fields and returns `ev-<subject_type>-<kind>-<8 hex chars>`. Use a stable discriminator, such as a file identity, when one source emits more than one item of the same kind for a subject. The ID does not include `value` or `timestamp`, so repeated investigations can cite the same logical observation even when its value changes. The hash also keeps subject IDs and discriminators out of the citation string. A short hash can collide; bundle validation rejects duplicate IDs.
 
 Reports will cite these IDs. A duplicate would make a citation ambiguous, so `EvidenceBundle` rejects it. `get_item(id)` returns the matching item or `None`. The availability state and reason preserve access failures and other missing evidence for a future report's missing-evidence section. Evidence values remain untrusted even after schema validation and must be delimited as data if used in a prompt.
+
+Observed values are limited to `MAX_EVIDENCE_VALUE_BYTES = 65,536` bytes of compact
+UTF-8 JSON (without optional whitespace). Dictionary keys, list delimiters,
+quotes and nested content all count. This per-item bound prevents a process
+command line or a filesystem name from making a report or future model payload
+unmanageably large. Direct model validation rejects an oversized observed value;
+collectors instead keep the item's stable ID and emit `availability: unavailable`,
+`reason: value_too_large`, and `value: null`. Collectors also bound partial
+unavailable/error values; an oversized partial value gets the same fixed reason.
+The JSON Schema describes JSON types; the serialized-byte limit is enforced by
+the Python model and is not expressible as a standard JSON Schema size keyword.
+Values and timestamps remain excluded from evidence-ID generation.
 
 Storage scans reuse this P1 contract without adding kinds. Folder bundles carry
 `folder_size` and `growth_rate`; file bundles carry `file_age`, `file_type` and,
