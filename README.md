@@ -60,6 +60,15 @@ is a rules-only correlation, limited to selected processes; uncertain matches
 remain unattributed. See the [capture workflow and P3 contract](docs/process-disk-link.md)
 and [limitations](docs/limitations.md).
 
+## Preview minimized model evidence
+
+`moonlight minimize --input evidence.json` accepts a bundle, an array of bundles,
+or a report containing bundles. It prints the exact eligible `payload_json` and
+a separate local redaction log. Usernames, hosts, private path segments, IPs and
+free-text arguments become coherent placeholders; long commands are marked as
+truncated. Unknown fields and file contents are withheld. This command performs
+no transmission. See [privacy, selection and failure behavior](docs/privacy.md).
+
 ## Safety baseline
 
 Collectors are read-only. Any future file action must pass local policy, show a dry-run preview, and require explicit confirmation before moving an eligible file to the Recycle Bin. System and personal-document folders are blocked. See [AGENTS.md](AGENTS.md) for the full rules.
