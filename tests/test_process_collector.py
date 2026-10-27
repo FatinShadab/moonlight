@@ -190,3 +190,41 @@ def test_invalid_creation_time_cannot_form_identity(created: float) -> None:
     access = Mock(spec=PsutilAccess)
     access.creation_time.return_value = created
     assert isinstance(collect_process(42, access), CollectionError)
+
+
+def test_optional_open_files_are_guarded_read_only_queries(process: Mock) -> None:
+    OpenFile = namedtuple("OpenFile", "path fd")
+    process.open_files.return_value = [OpenFile("C:/Example/cache/log.bin", -1)]
+    bundle = collect_process(42, include_open_files=True)
+    assert isinstance(bundle, EvidenceBundle)
+    opened = next(i for i in bundle.items if i.kind == EvidenceKind.OPEN_FILES)
+    assert opened.value == ["C:/Example/cache/log.bin"]
+    assert opened.availability == "observed"
+    process.kill.assert_not_called()
+    process.terminate.assert_not_called()
+
+
+@pytest.mark.parametrize("error", [psutil.AccessDenied(42), psutil.NoSuchProcess(42)])
+def test_optional_open_file_failure_keeps_other_evidence(
+    process: Mock, error: Exception
+) -> None:
+    process.open_files.side_effect = error
+    bundle = collect_process(42, include_open_files=True)
+    assert isinstance(bundle, EvidenceBundle)
+    opened = next(i for i in bundle.items if i.kind == EvidenceKind.OPEN_FILES)
+    assert opened.availability == "unavailable"
+    assert opened.reason
+    assert all(i.availability == "observed" for i in bundle.items if i is not opened)
+
+
+def test_pid_reuse_during_open_file_read_discards_paths(process: Mock) -> None:
+    def reused() -> list[object]:
+        process.create_time.return_value += 1
+        return []
+
+    process.open_files.side_effect = reused
+    bundle = collect_process(42, include_open_files=True)
+    assert isinstance(bundle, EvidenceBundle)
+    opened = next(i for i in bundle.items if i.kind == EvidenceKind.OPEN_FILES)
+    assert opened.value is None
+    assert opened.reason == "process_exited_or_pid_reused"
