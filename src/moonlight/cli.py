@@ -88,6 +88,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--fixtures-dir", help="override directory for mock fixture reports"
     )
     investigate_cmd.add_argument("--fixture", help="specific fixture report file name")
+    investigate_cmd.add_argument(
+        "--model", help="model name or identifier (overrides OLLAMA_MODEL)"
+    )
+    investigate_cmd.add_argument(
+        "--base-url", help="API base URL (overrides OLLAMA_BASE_URL)"
+    )
     policy_val = commands.add_parser(
         "policy-validate", help="validate proposed action against safety policy"
     )
@@ -147,6 +153,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         cfg = ReasoningConfig(
             provider=args.provider or "mock",
+            model=args.model or "mock-model",
+            ollama_model=args.model,
+            ollama_base_url=args.base_url or "https://ollama.com",
             fixtures_dir=Path(args.fixtures_dir) if args.fixtures_dir else None,
             default_fixture=args.fixture or "default.json",
         )
