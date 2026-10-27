@@ -35,6 +35,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "moonlight.rules" = ["*.yaml"]
+"moonlight.reasoning" = ["prompts/*.txt"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
