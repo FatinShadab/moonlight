@@ -29,6 +29,7 @@ from moonlight.core.evidence import (
     make_evidence_id,
 )
 from moonlight.minimizer.models import ModelPayload
+from moonlight.reasoning.exceptions import MissingApiKeyError
 from moonlight.reasoning.grounding import (
     OffAllowlistActionError,
     UngroundedCitationError,
@@ -420,13 +421,13 @@ def test_off_allowlist_action_leads_to_fallback() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_placeholder_providers_raise_not_implemented() -> None:
+def test_placeholder_providers_raise_expected_errors() -> None:
     payload = ModelPayload(untrusted_evidence=())
 
-    ollama = OllamaCloudProvider()
+    ollama = OllamaCloudProvider(api_key="")
     with pytest.raises(
-        NotImplementedError,
-        match="OllamaCloudProvider is not implemented in offline mode",
+        MissingApiKeyError,
+        match="OLLAMA_API_KEY environment variable is missing or empty",
     ):
         ollama.investigate(payload)
 
