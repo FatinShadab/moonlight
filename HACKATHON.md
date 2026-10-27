@@ -178,6 +178,21 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 - Added `moonlight investigate` CLI command with mock and offline provider support.
 - Validation: 474 tests pass across the suite, Ruff lint and format clean, strict mypy passes with 0 errors across 70 files.
 
+## 2026-10-27 — Ollama Cloud temporary placeholder provider
+
+- Implemented `OllamaCloudProvider` behind the existing `ReportProvider` interface as a temporary development placeholder (the final system must use `MetaProvider`).
+- Added `httpx`-based calls to hosted `https://ollama.com/api/chat` using `Authorization: Bearer <OLLAMA_API_KEY>` header.
+- Loaded model name and base URL dynamically from configuration and `OLLAMA_MODEL` environment variable (never hard-coding models).
+- Added explicit error types in `moonlight.reasoning.exceptions`: `MissingApiKeyError`, `InvalidApiKeyError` (401/403), `UnknownModelError` (404), `RateLimitError` (429), `ProviderTimeoutError`, and `MalformedOutputError`.
+- Implemented bounded retries with exponential backoff for 429 rate limits, 5xx server errors, and network timeouts; non-retryable errors (401, 403, 404, missing key) fail immediately without wasteful retries.
+- Supported schema-constrained output passing `Report.model_json_schema()` in the `format` parameter, with graceful fallback to `format="json"` if an endpoint rejects full schemas.
+- Reused P7a prompt templates, datamarking delimiters, and short citation alias mappings (`E1`, `E2`) unchanged.
+- Added provider-segregated caching (`moonlight.reasoning.cache.ReasoningCache`): responses are keyed by `(provider, model, payload_hash, prompt_version)` and stored in provider-isolated directories to prevent cross-provider contamination; request metrics (requests, hits, misses) are logged.
+- Guaranteed secret isolation: API keys are read strictly from the environment, never logged, never cached, and omitted from `__repr__` and test output. Added `OLLAMA_API_KEY`, `OLLAMA_MODEL`, and `PROVIDER` in `.env.example`.
+- Added provenance tracking and UI badge: every `Report` and `EvaluationResult` captures `provider` and `model`; the review UI (`moonlight.ui.badge.ProviderBadgeWidget`) renders a `'cloud placeholder model'` badge whenever the provider is not `'meta'`.
+- Added manual developer smoke script (`scripts/ollama_smoke.py`, excluded from CI) that lists models via `GET /api/tags` and performs a live smoke call.
+- Validated with comprehensive mocked-HTTP tests: 496 tests passing across suite, Ruff and strict mypy clean.
+
 
 ## Planned evaluation
 
