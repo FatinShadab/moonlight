@@ -5,8 +5,10 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from collections.abc import Mapping
+from datetime import datetime
 from enum import StrEnum
-from typing import Literal
+from typing import Any, Literal, Self
 
 from pydantic import (
     AwareDatetime,
@@ -19,6 +21,7 @@ from pydantic import (
 
 SubjectType = Literal["process", "storage"]
 Availability = Literal["observed", "unavailable", "error"]
+MAX_EVIDENCE_VALUE_BYTES = 64 * 1024
 
 
 class EvidenceKind(StrEnum):
@@ -54,6 +57,83 @@ class SeverityHint(StrEnum):
 
 _NAME_PATTERN = re.compile(r"[a-z][a-z0-9_-]*\Z")
 _ID_PATTERN = r"^ev-(process|storage)-[a-z][a-z0-9_-]*-[0-9a-f]{8}$"
+
+
+class _FrozenDict(dict[str, JsonValue]):
+    """Keep the JSON dictionary read interface without mutable operations."""
+
+    def __copy__(self) -> Self:
+        return self
+
+    def __deepcopy__(self, memo: dict[int, Any]) -> Self:
+        return self
+
+    def _immutable(self, *args: Any, **kwargs: Any) -> None:
+        raise TypeError("evidence values are immutable")
+
+    __setitem__ = _immutable
+    __delitem__ = _immutable
+    clear = _immutable
+    pop = _immutable
+    setdefault = _immutable
+    update = _immutable
+
+    def popitem(self) -> tuple[str, JsonValue]:
+        raise TypeError("evidence values are immutable")
+
+    def __ior__(self, other: Any) -> Self:  # type: ignore[override,misc]
+        raise TypeError("evidence values are immutable")
+
+
+class _FrozenList(list[JsonValue]):
+    """Keep the JSON list read interface without mutable operations."""
+
+    def __copy__(self) -> Self:
+        return self
+
+    def __deepcopy__(self, memo: dict[int, Any]) -> Self:
+        return self
+
+    def _immutable(self, *args: Any, **kwargs: Any) -> None:
+        raise TypeError("evidence values are immutable")
+
+    __setitem__ = _immutable
+    __delitem__ = _immutable
+    append = _immutable
+    clear = _immutable
+    extend = _immutable
+    insert = _immutable
+    pop = _immutable
+    remove = _immutable
+    reverse = _immutable
+    sort = _immutable
+
+    def __iadd__(self, other: Any) -> Self:  # type: ignore[override,misc]
+        raise TypeError("evidence values are immutable")
+
+    def __imul__(self, other: Any) -> Self:  # type: ignore[misc]
+        raise TypeError("evidence values are immutable")
+
+
+def _freeze_value(value: JsonValue) -> JsonValue:
+    if isinstance(value, dict):
+        return _FrozenDict({key: _freeze_value(child) for key, child in value.items()})
+    if isinstance(value, list):
+        return _FrozenList(_freeze_value(child) for child in value)
+    return value
+
+
+def value_exceeds_size_limit(value: JsonValue) -> bool:
+    """Bound compact UTF-8 JSON without materializing an oversized string."""
+    size = 0
+    encoder = json.JSONEncoder(
+        ensure_ascii=False, separators=(",", ":"), allow_nan=True
+    )
+    for part in encoder.iterencode(value):
+        size += len(part.encode("utf-8"))
+        if size > MAX_EVIDENCE_VALUE_BYTES:
+            return True
+    return False
 
 
 def make_evidence_id(
@@ -124,9 +204,48 @@ class EvidenceItem(BaseModel):
         if self.availability == "observed":
             if self.reason is not None:
                 raise ValueError("observed evidence must not have a reason")
+            if value_exceeds_size_limit(self.value):
+                raise ValueError("value_too_large")
         elif self.reason is None or not self.reason.strip():
             raise ValueError("unavailable or errored evidence requires a reason")
+        object.__setattr__(self, "value", _freeze_value(self.value))
         return self
+
+    def model_copy(
+        self, *, update: Mapping[str, Any] | None = None, deep: bool = False
+    ) -> Self:
+        """Freeze values introduced through Pydantic's unvalidated copy API."""
+        copied = super().model_copy(update=update, deep=deep)
+        if copied.availability == "observed" and value_exceeds_size_limit(copied.value):
+            raise ValueError("value_too_large")
+        object.__setattr__(copied, "value", _freeze_value(copied.value))
+        return copied
+
+
+def bounded_evidence_item(
+    *,
+    id: str,
+    source: str,
+    kind: EvidenceKind,
+    value: JsonValue,
+    availability: Availability,
+    reason: str | None,
+    timestamp: datetime,
+    severity_hint: SeverityHint | None = None,
+) -> EvidenceItem:
+    """Convert an oversized collector observation to explicit missing evidence."""
+    if value_exceeds_size_limit(value):
+        value, availability, reason = None, "unavailable", "value_too_large"
+    return EvidenceItem(
+        id=id,
+        source=source,
+        kind=kind,
+        value=value,
+        severity_hint=severity_hint,
+        availability=availability,
+        reason=reason,
+        timestamp=timestamp,
+    )
 
 
 class EvidenceBundle(BaseModel):

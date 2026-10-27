@@ -5,11 +5,13 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 from pydantic import ValidationError
 
 from moonlight.core.evidence import (
+    MAX_EVIDENCE_VALUE_BYTES,
     EvidenceBundle,
     EvidenceItem,
     EvidenceKind,
@@ -103,6 +105,65 @@ def test_bundle_lookup_and_json_round_trip() -> None:
     assert isinstance(restored.items, tuple)
     assert restored.get_item(item.id) == item
     assert restored.get_item("ev-process-missing") is None
+
+
+def test_nested_values_are_frozen_without_changing_json() -> None:
+    original: dict[str, Any] = {"outer": [{"name": "before", "numbers": [1, 2]}]}
+    item = sample_item(value=original)
+    original["outer"][0]["name"] = "after"
+    assert item.model_dump(mode="json")["value"] == {
+        "outer": [{"name": "before", "numbers": [1, 2]}]
+    }
+    outer = cast(dict[str, Any], item.value)
+    nested = cast(list[Any], outer["outer"])
+    leaf = cast(dict[str, Any], nested[0])
+    with pytest.raises(TypeError, match="immutable"):
+        leaf["name"] = "changed"
+    with pytest.raises(TypeError, match="immutable"):
+        nested.append("changed")
+    with pytest.raises(TypeError, match="immutable"):
+        cast(list[Any], leaf["numbers"])[0] = 9
+    copied = item.model_copy(update={"value": {"nested": [1, 2]}})
+    with pytest.raises(TypeError, match="immutable"):
+        cast(list[Any], cast(dict[str, Any], copied.value)["nested"]).append(3)
+    deep_copy = item.model_copy(deep=True)
+    assert (
+        deep_copy.model_dump(mode="json")["value"]
+        == item.model_dump(mode="json")["value"]
+    )
+    assert EvidenceItem.model_validate_json(item.model_dump_json()) == item
+
+
+@pytest.mark.parametrize(
+    ("length", "accepted"),
+    [
+        (MAX_EVIDENCE_VALUE_BYTES - 3, True),
+        (MAX_EVIDENCE_VALUE_BYTES - 2, True),
+        (MAX_EVIDENCE_VALUE_BYTES - 1, False),
+    ],
+)
+def test_value_size_boundary(length: int, accepted: bool) -> None:
+    value = "x" * length  # Two JSON quotation marks count toward the cap.
+    if accepted:
+        assert sample_item(value=value).value == value
+    else:
+        with pytest.raises(ValidationError, match="value_too_large"):
+            sample_item(value=value)
+
+
+def test_nested_json_overhead_counts_toward_size_cap() -> None:
+    prefix_size = len(json.dumps({"nested": ""}, separators=(",", ":")))
+    at_cap = {"nested": "x" * (MAX_EVIDENCE_VALUE_BYTES - prefix_size)}
+    assert sample_item(value=at_cap).model_dump(mode="json")["value"] == at_cap
+    with pytest.raises(ValidationError, match="value_too_large"):
+        sample_item(value={"nested": at_cap["nested"] + "x"})
+
+
+def test_multibyte_utf8_counts_bytes_not_characters() -> None:
+    at_cap = "é" * ((MAX_EVIDENCE_VALUE_BYTES - 2) // 2)
+    assert sample_item(value=at_cap).value == at_cap
+    with pytest.raises(ValidationError, match="value_too_large"):
+        sample_item(value=at_cap + "é")
 
 
 @pytest.mark.parametrize("availability", ["unavailable", "error"])
