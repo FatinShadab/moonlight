@@ -2,6 +2,32 @@
 
 Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Your World track. This log distinguishes implemented behavior from planned work.
 
+## Timezone and hackathon schedule
+
+- **Project commit timezone offset**: `+06:00` (UTC+6, Bangladesh Standard Time, observed from `git log --date=iso`).
+- **Eastern Time equivalent**: `UTC-4` (EDT, 10 hours behind project local time) through November 1, 2026, transitioning to `UTC-5` (EST, 11 hours behind) upon DST change.
+- **Kickoff**: October 26, 2026 at 12:00 PM ET (October 26, 2026 at 10:00 PM UTC+6).
+- **Building period**: October 27 – November 4, 2026.
+
+## Agents and tools
+
+| Phase | Description / Scope | Agent or tool |
+| --- | --- | --- |
+| P0 | Repository bootstrap and foundation (PR #1) | maintainer to fill |
+| P1 | Evidence schema and stable IDs (PR #2) | maintainer to fill |
+| P2 | Process collectors (PR #3) | maintainer to fill |
+| P3 | Storage investigator (PR #4) | maintainer to fill |
+| P4 | Process-to-disk link (PR #5) | maintainer to fill |
+| P5 | Privacy minimizer (PR #6) | maintainer to fill |
+| P6 | Rule engine and immutable evidence (PRs #7, #8) | maintainer to fill |
+| P7a | Process-to-disk rule findings & live decoy check (PRs #9, #10) | maintainer to fill |
+
+## History notes
+
+- **P5 commits**: The P5 commits (`47ee92d` through `544e225`) landed directly on `main` under different hashes than PR #5 lists.
+- **Tags and lineage**: The old tag `m1b-investigators` points to `ad8e7b5`, which is not on `main`. The new tag `m1b-investigators-main` marks the PR #9 merge commit `0af40a6`. Existing history was not rewritten.
+- **Model provider**: The Ollama cloud model, when used, is a temporary development placeholder; the submitted system uses the Meta Model API.
+
 ## 2026-10-27 — Repository bootstrap
 
 - Added the installable Python 3.11+ package skeleton and pinned runtime/development dependencies.
