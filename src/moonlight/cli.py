@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -10,6 +11,8 @@ from pydantic import TypeAdapter
 
 from moonlight.collectors.bundle import collect_evidence
 from moonlight.collectors.process import CollectionError
+from moonlight.core.evidence import EvidenceBundle
+from moonlight.minimizer import MinimizerSettings, PrivacyContext, minimize_evidence
 from moonlight.storage.attribution import attribute_disk_growth
 from moonlight.storage.attribution_models import (
     AttributionSettings,
@@ -54,7 +57,52 @@ def main(argv: Sequence[str] | None = None) -> int:
     link.add_argument("--after", required=True)
     link.add_argument("--p3-findings", help="JSON array of supplied P3 findings")
     link.add_argument("--min-growth-rate", type=float, default=1024 * 1024)
+    minimize = commands.add_parser(
+        "minimize", help="preview minimized model JSON and a local redaction log"
+    )
+    minimize.add_argument(
+        "--input", required=True, help="evidence bundle, array, or report JSON"
+    )
+    minimize.add_argument(
+        "--context", help="local JSON with explicit username/hostname aliases"
+    )
+    minimize.add_argument("--evidence-id", action="append")
+    minimize.add_argument("--max-command-chars", type=int, default=512)
+    minimize.add_argument("--max-evidence-items", type=int, default=256)
     args = parser.parse_args(argv)
+    if args.command == "minimize":
+        try:
+            raw = json.loads(Path(args.input).read_text(encoding="utf-8-sig"))
+            if isinstance(raw, dict) and "bundles" in raw:
+                raw = raw["bundles"]
+            bundles = (
+                (EvidenceBundle.model_validate(raw),)
+                if isinstance(raw, dict)
+                else TypeAdapter(tuple[EvidenceBundle, ...]).validate_python(raw)
+            )
+            privacy = (
+                PrivacyContext.model_validate_json(
+                    Path(args.context).read_text(encoding="utf-8-sig")
+                )
+                if args.context
+                else PrivacyContext()
+            )
+            minimized_result = minimize_evidence(
+                bundles,
+                context=privacy,
+                settings=MinimizerSettings(
+                    max_command_chars=args.max_command_chars,
+                    max_evidence_items=args.max_evidence_items,
+                ),
+                evidence_ids=frozenset(args.evidence_id) if args.evidence_id else None,
+            )
+        except (ValueError, OSError):
+            parser.error(
+                "minimization failed; no payload produced; "
+                "retain local rules-only results"
+            )
+        print(minimized_result.model_dump_json(indent=2, ensure_ascii=True))
+        return 0
     if args.command == "disk-snapshot":
         try:
             snapshot_result = capture_disk_snapshot(args.root, args.pid)
