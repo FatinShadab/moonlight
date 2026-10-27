@@ -67,6 +67,16 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 - Local Ruff, mypy and all 177 tests pass. A Windows 11 / Python 3.12.14 sample tree of 1,008 files and 41 directories took 9.619, 9.627 and 10.087 seconds (median 9.627); eight files were hashed after size grouping.
 - Timings include helper startup, scanning, SQLite and classification, exclude tree generation/JSON, and do not clear the filesystem cache. Raw timing and reproduction are documented in results and storage docs.
 
+## 2026-10-27 — Process-to-disk attribution
+
+- Added opt-in, identity-guarded open-file path collection and JSON snapshots of explicit storage roots/PIDs.
+- Added deterministic comparison of folder growth, process write-byte deltas and path links with high/medium/low/unattributed confidence and versioned endpoint evidence citations.
+- Ambiguous writers, missing baselines, PID reuse, reset counters, incomplete folder totals and stale samples abstain; weak coverage reduces confidence.
+- Added the approved P3 findings adapter: exact process identity and validated AFTER citations permit a combined storage/security report. P3 rules themselves are not implemented here.
+- Added synthetic confidence/boundary, uncertainty, citation, collector and CLI coverage. Documented capture commands, heuristic thresholds and limitations in `docs/process-disk-link.md` and `docs/limitations.md`.
+- This feature is local and rules-only, with no AI dependency or action implementation. Confidence is correlation among sampled processes, not a calibrated probability or proof of a writer.
+- Validation: Ruff lint/format checks, strict mypy and all 254 tests pass; confidence scenarios use synthetic snapshots.
+
 ## Planned evaluation
 
 The [PRD](Moonlight%20Product%20Requirements%20Document.md) defines process and storage rule metrics, citation coverage, schema validity, ablations, and robustness scenarios. Results will include the labeled-set size and reproduction method when measurements exist. No performance or safety metric is claimed yet.

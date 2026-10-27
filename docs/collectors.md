@@ -20,6 +20,12 @@ available per-process I/O counters. Connections are a snapshot, not a traffic
 history; counters are cumulative since process creation and are not disk rates.
 No executable is launched and no target process is controlled.
 
+`collect_process(..., include_open_files=True)` additionally queries `open_files`
+as an independent evidence field. This is enabled by `disk-snapshot`, while
+`collect` retains its existing nine-item contract. Windows open-file enumeration
+can omit handles and does not identify write mode; see the
+[process-to-disk limitations](limitations.md).
+
 The subject ID is `<pid>:<repr(creation_time)>`, preserving psutil's full float
 precision. Reads check identity before and after querying to discard observations
 when the PID is reused. A parent chain that cannot be completed is unavailable;
