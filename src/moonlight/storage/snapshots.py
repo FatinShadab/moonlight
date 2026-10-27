@@ -16,6 +16,7 @@ from moonlight.core.evidence import (
     EvidenceBundle,
     EvidenceItem,
     EvidenceKind,
+    bounded_evidence_item,
     make_evidence_id,
 )
 from moonlight.storage.filesystem import LocalFileSystem
@@ -89,7 +90,7 @@ def _growth(
                 }
             )
     availability: Availability = "unavailable" if reason is not None else "observed"
-    return EvidenceItem(
+    return bounded_evidence_item(
         id=make_evidence_id(
             "storage", bundle.subject_id, "snapshot_store", EvidenceKind.GROWTH_RATE
         ),

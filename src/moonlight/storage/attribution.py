@@ -13,6 +13,7 @@ from moonlight.core.evidence import (
     EvidenceBundle,
     EvidenceItem,
     EvidenceKind,
+    bounded_evidence_item,
     make_evidence_id,
 )
 from moonlight.storage.attribution_models import (
@@ -346,12 +347,13 @@ def attribute_disk_growth(
             "p3_finding_ids": list(p3_ids),
             "basis": "heuristic_correlation_not_proof",
         }
-        derived[subject] = EvidenceItem(
+        derived[subject] = bounded_evidence_item(
             id=link_id,
             source="disk_attribution",
             kind=EvidenceKind.PROCESS_DISK_LINK,
             value=value,
             availability="observed",
+            reason=None,
             timestamp=after.storage.timestamp,
         )
         findings.append(

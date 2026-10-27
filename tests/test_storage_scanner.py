@@ -13,10 +13,20 @@ import pytest
 
 from moonlight.collectors.hash_worker import hash_file
 from moonlight.collectors.hashing import FileHash, HashAccess, HashLimits
-from moonlight.core.evidence import EvidenceBundle, EvidenceItem, EvidenceKind
+from moonlight.core.evidence import (
+    MAX_EVIDENCE_VALUE_BYTES,
+    EvidenceBundle,
+    EvidenceItem,
+    EvidenceKind,
+)
 from moonlight.storage.filesystem import REPARSE_POINT, EntryInfo, LocalFileSystem
-from moonlight.storage.models import StorageReport, path_id
-from moonlight.storage.scanner import ScanLimits, StorageScanner
+from moonlight.storage.models import PathReference, StorageReport, path_id
+from moonlight.storage.scanner import (
+    ScanLimits,
+    ScannedEntry,
+    StorageScanner,
+    storage_item,
+)
 
 
 class TrackingHashes:
@@ -109,6 +119,35 @@ def test_only_selected_roots_and_stable_evidence_ids(tmp_path: Path) -> None:
         item.id for b in second.bundles for item in b.items
     ]
     hashes.hash.assert_not_called()
+
+
+def test_oversized_storage_value_is_unavailable(tmp_path: Path) -> None:
+    entry = ScannedEntry(
+        path=tmp_path,
+        reference=PathReference(root_id=path_id(str(tmp_path)), relative_path=""),
+        info=None,
+        directory=True,
+    )
+    item = storage_item(
+        entry,
+        EvidenceKind.FOLDER_SIZE,
+        datetime.now(UTC),
+        {"detail": "x" * MAX_EVIDENCE_VALUE_BYTES},
+    )
+    assert item.availability == "unavailable"
+    assert item.reason == "value_too_large"
+    assert item.value is None
+    partial = storage_item(
+        entry,
+        EvidenceKind.FOLDER_SIZE,
+        datetime.now(UTC),
+        {"detail": "x" * MAX_EVIDENCE_VALUE_BYTES},
+        availability="unavailable",
+        reason="incomplete_tree",
+    )
+    assert partial.availability == "unavailable"
+    assert partial.reason == "value_too_large"
+    assert partial.value is None
 
 
 @pytest.mark.parametrize(

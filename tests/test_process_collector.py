@@ -15,7 +15,11 @@ from moonlight.collectors.process import (
     PsutilAccess,
     collect_process,
 )
-from moonlight.core.evidence import EvidenceBundle, EvidenceKind
+from moonlight.core.evidence import (
+    MAX_EVIDENCE_VALUE_BYTES,
+    EvidenceBundle,
+    EvidenceKind,
+)
 
 PROCESS_CLASS = psutil.Process
 
@@ -92,6 +96,23 @@ def test_success_and_stable_identity(process: Mock) -> None:
     assert isinstance(reused, EvidenceBundle)
     assert reused.subject_id != bundle.subject_id
     assert reused.items[0].id != bundle.items[0].id
+
+
+def test_oversized_process_value_is_unavailable_not_an_exception() -> None:
+    access = Mock(spec=PsutilAccess)
+    access.creation_time.return_value = 1700000000.125
+    access.read.side_effect = lambda _pid, _created, kind: (
+        ["x" * MAX_EVIDENCE_VALUE_BYTES]
+        if kind == EvidenceKind.COMMAND_LINE
+        else "permitted"
+    )
+    bundle = collect_process(42, access)
+    assert isinstance(bundle, EvidenceBundle)
+    command = next(i for i in bundle.items if i.kind == EvidenceKind.COMMAND_LINE)
+    assert command.availability == "unavailable"
+    assert command.reason == "value_too_large"
+    assert command.value is None
+    assert all(i.availability == "observed" for i in bundle.items if i is not command)
 
 
 @pytest.mark.parametrize("kind", PROCESS_KINDS)
