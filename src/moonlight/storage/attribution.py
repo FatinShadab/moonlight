@@ -17,6 +17,7 @@ from moonlight.core.evidence import (
     bounded_evidence_item,
     make_evidence_id,
 )
+from moonlight.rules.process import evaluate_process
 from moonlight.storage.attribution_models import (
     AttributionFinding,
     AttributionSettings,
@@ -231,10 +232,16 @@ def attribute_disk_growth(
             for bundle in snapshot.processes
         }
     )
+    generated = tuple(
+        finding
+        for bundle in sorted(after.processes, key=lambda item: item.subject_id)
+        for finding in evaluate_process(bundle).p3_findings
+    )
+    all_p3 = (*generated, *p3_findings)
     security: list[P3Finding] = []
-    if len({finding.finding_id for finding in p3_findings}) != len(p3_findings):
+    if len({finding.finding_id for finding in all_p3}) != len(all_p3):
         raise ValueError("P3 finding IDs must be unique")
-    for finding in p3_findings:
+    for finding in all_p3:
         bundle = next(
             (b for b in after.processes if b.subject_id == finding.process_subject_id),
             None,

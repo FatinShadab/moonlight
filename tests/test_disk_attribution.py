@@ -138,6 +138,110 @@ def snapshot(
     )
 
 
+def with_executable(snapshot_value: DiskSnapshot, path: str) -> DiskSnapshot:
+    """Add synthetic P3-observable evidence to the selected process."""
+    process = snapshot_value.processes[0]
+    executable = observation(
+        process.subject_id,
+        EvidenceKind.EXECUTABLE_PATH,
+        path,
+        snapshot_value.storage.timestamp,
+    )
+    return snapshot_value.model_copy(
+        update={
+            "processes": (
+                process.model_copy(update={"items": (*process.items, executable)}),
+                *snapshot_value.processes[1:],
+            )
+        }
+    )
+
+
+def test_generated_p3_finding_joins_attributed_process_and_resolves_citation(
+    tmp_path: Path,
+) -> None:
+    before = snapshot(tmp_path)
+    after = with_executable(
+        snapshot(tmp_path, offset=10, size=11 * MIB, count=10 * MIB),
+        "C:/Users/Test/Temp/svchost.exe",
+    )
+    report = attribute_disk_growth(before, after)
+    assert report.findings[0].process_subject_id == PROCESS
+    assert [finding.rule_id for finding in report.p3_findings] == [
+        "system_path_mismatch"
+    ]
+    generated = report.p3_findings[0]
+    assert report.findings[0].p3_finding_ids == (generated.finding_id,)
+    assert report.findings[0].processes[0].p3_finding_ids == (generated.finding_id,)
+    assert generated.evidence_ids != (after.processes[0].items[-1].id,)
+    items = {item.id: item for bundle in report.bundles for item in bundle.items}
+    assert all(
+        evidence_id in items and items[evidence_id].availability == "observed"
+        for evidence_id in generated.evidence_ids
+    )
+
+
+def test_generated_p3_no_match_has_no_findings(tmp_path: Path) -> None:
+    report = attribute_disk_growth(
+        snapshot(tmp_path),
+        snapshot(tmp_path, offset=10, size=11 * MIB, count=10 * MIB),
+    )
+    assert report.p3_findings == ()
+    assert report.findings[0].p3_finding_ids == ()
+
+
+def test_generated_p3_does_not_join_reused_pid(tmp_path: Path) -> None:
+    before = snapshot(tmp_path, subject="42:1700000000.125")
+    after = with_executable(
+        snapshot(
+            tmp_path,
+            offset=10,
+            size=11 * MIB,
+            count=10 * MIB,
+            subject="42:1700000010.125",
+        ),
+        "C:/Users/Test/Temp/svchost.exe",
+    )
+    report = attribute_disk_growth(before, after)
+    assert len(report.p3_findings) == 1
+    assert report.p3_findings[0].process_subject_id == "42:1700000010.125"
+    assert report.findings[0].process_subject_id is None
+    assert report.findings[0].p3_finding_ids == ()
+    assert all(
+        process.p3_finding_ids == ()
+        for process in report.findings[0].processes
+        if process.process_subject_id == before.processes[0].subject_id
+    )
+
+
+def test_generated_p3_unrelated_process_does_not_join_writer(
+    tmp_path: Path,
+) -> None:
+    before = snapshot(tmp_path)
+    after = snapshot(tmp_path, offset=10, size=11 * MIB, count=10 * MIB)
+    unrelated = process_bundle(
+        tmp_path, after.storage.timestamp, 0, subject="99:1.0", paths=[]
+    )
+    executable = observation(
+        unrelated.subject_id,
+        EvidenceKind.EXECUTABLE_PATH,
+        "C:/Users/Test/Temp/svchost.exe",
+        after.storage.timestamp,
+    )
+    after = after.model_copy(
+        update={
+            "processes": (
+                *after.processes,
+                unrelated.model_copy(update={"items": (*unrelated.items, executable)}),
+            )
+        }
+    )
+    report = attribute_disk_growth(before, after)
+    assert report.findings[0].process_subject_id == PROCESS
+    assert report.findings[0].p3_finding_ids == ()
+    assert [finding.process_subject_id for finding in report.p3_findings] == ["99:1.0"]
+
+
 @pytest.mark.parametrize(
     ("ratio", "before_paths", "expected"),
     [
