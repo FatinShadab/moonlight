@@ -1,3 +1,6 @@
 # Results
 
-Evaluation methods, labeled-set sizes, and measured results will be published here. No results have been measured yet.
+[`storage-benchmark.json`](storage-benchmark.json) records three Windows scans
+of a synthetic 1,008-file tree. See [reproduction and timing scope](../docs/storage.md#reproducible-sample-tree-timing).
+
+Rule accuracy, labeled-set metrics and safety evaluation have not been measured.

@@ -60,6 +60,13 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 - Added redirected known-folder discovery and conservative protection for documents, media, system paths and their containing folders.
 - Added override-prevention tests: do_not_touch takes priority even when the same path is allowlisted as a cache.
 
+## 2026-10-27 — Storage CLI and benchmark
+
+- Added `moonlight storage --root PATH --snapshots FILE`, with explicit non-overlapping roots, JSON evidence/classifications and no cleanup actions.
+- Added end-to-end temporary-tree/SQLite CLI tests and a reproducible benchmark script.
+- Local Ruff, mypy and all 177 tests pass. A Windows 11 / Python 3.12.14 sample tree of 1,008 files and 41 directories took 9.619, 9.627 and 10.087 seconds (median 9.627); eight files were hashed after size grouping.
+- Timings include helper startup, scanning, SQLite and classification, exclude tree generation/JSON, and do not clear the filesystem cache. Raw timing and reproduction are documented in results and storage docs.
+
 ## Planned evaluation
 
 The [PRD](Moonlight%20Product%20Requirements%20Document.md) defines process and storage rule metrics, citation coverage, schema validity, ablations, and robustness scenarios. Results will include the labeled-set size and reproduction method when measurements exist. No performance or safety metric is claimed yet.

@@ -21,3 +21,11 @@
 Create IDs with `make_evidence_id(subject_type, subject_id, source, kind, discriminator="")`. It hashes those identity fields and returns `ev-<subject_type>-<kind>-<8 hex chars>`. Use a stable discriminator, such as a file identity, when one source emits more than one item of the same kind for a subject. The ID does not include `value` or `timestamp`, so repeated investigations can cite the same logical observation even when its value changes. The hash also keeps subject IDs and discriminators out of the citation string. A short hash can collide; bundle validation rejects duplicate IDs.
 
 Reports will cite these IDs. A duplicate would make a citation ambiguous, so `EvidenceBundle` rejects it. `get_item(id)` returns the matching item or `None`. The availability state and reason preserve access failures and other missing evidence for a future report's missing-evidence section. Evidence values remain untrusted even after schema validation and must be delimited as data if used in a prompt.
+
+Storage scans reuse this P1 contract without adding kinds. Folder bundles carry
+`folder_size` and `growth_rate`; file bundles carry `file_age`, `file_type` and,
+for same-size candidates, `duplicate_hash`. Partial totals are unavailable with
+an explicit lower-bound value and reason. Every value's structured `path` has
+`root_id` and `relative_path`; absolute roots are mapped once in the surrounding
+StorageReport. Rule labels are separate results referencing these evidence IDs.
+See [storage collection and snapshot semantics](storage.md).

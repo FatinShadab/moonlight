@@ -1,5 +1,17 @@
 # Storage investigator
 
+```powershell
+moonlight storage --root "D:\Downloads" --snapshots "C:\MoonlightData\sizes.sqlite3"
+# Also supported: python -m moonlight storage --root ... --snapshots ...
+```
+
+Both arguments are explicit; repeat `--root` for multiple non-overlapping roots.
+The snapshot parent must exist. The command prints a `StorageReport` containing
+P1 bundles and rule labels. Exit status is 0 if the snapshot was saved, 1 if
+collection results remain available but the database failed, or 2 for invalid
+arguments/destination containment. Individual collection failures stay in JSON.
+`investigate_storage` is the equivalent Python entry point.
+
 The storage scanner reads only explicitly selected, non-overlapping directory
 roots. It never enumerates a parent or adjacent directory. Ancestor metadata is
 checked to reject roots selected through symlinks or junctions. All symlinks and
@@ -87,3 +99,22 @@ is isolated behind `KnownFolders`; location lists can be supplied directly for
 deterministic tests. Rule configuration is trusted local configuration, separate
 from untrusted filenames and evidence. Future cleanup would still need the
 project's independent policy checks, dry-run preview and explicit confirmation.
+
+## Reproducible sample-tree timing
+
+```powershell
+.\.venv\Scripts\python benchmarks/storage.py --workspace .tmp/storage-benchmark-new
+```
+
+Use a new workspace name; the benchmark never overwrites or removes an existing
+tree. It creates 1,008 inert `.bin` files in 41 directories (1,785,644 logical
+bytes). All 1,000 ordinary files have different sizes; eight additional 32 KiB
+copies share a size and content. Only those eight candidates are hashed.
+
+On Windows 11 build 26300 with Python 3.12.14, three consecutive scans took
+**9.619, 9.627 and 10.087 seconds**, median **9.627 seconds**. Measurements include
+enumeration, evidence creation, helper startup/hashing, SQLite snapshots and
+classification, but exclude fixture creation and JSON serialization. The
+filesystem cache was not cleared. This small-tree timing is not a disk-speed or
+large-tree performance claim; helper startup contributes to elapsed time.
+Raw results are in [`results/storage-benchmark.json`](../results/storage-benchmark.json).
