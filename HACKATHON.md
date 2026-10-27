@@ -120,6 +120,13 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 - Added a 1 GiB free-space start guard and guaranteed temporary-folder cleanup on normal exit, exceptions, and Ctrl+C.
 - Added in-process tests using tiny caps; no default-cap decoy run occurs in pytest or CI.
 
+## 2026-10-27 — P3 findings in disk links
+
+- Process-to-disk comparisons now run local P3 rules on AFTER process evidence, remap citations to versioned AFTER IDs, and join findings to process comparisons and selected writers by exact PID plus creation time.
+- The optional supplied-findings adapter remains available. Standard disk snapshots omit hash and signature observations, so only rules supported by their observed evidence can match.
+- Added synthetic matching, no-match, PID-reuse, and unrelated-process coverage. No AI call or action path was added.
+
+
 ## Planned evaluation
 
 The [PRD](Moonlight%20Product%20Requirements%20Document.md) defines process and storage rule metrics, citation coverage, schema validity, ablations, and robustness scenarios. Results will include the labeled-set size and reproduction method when measurements exist. No performance or safety metric is claimed yet.

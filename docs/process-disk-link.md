@@ -19,7 +19,10 @@ only to stdout; the shell owns output destinations. It queries base process
 metadata, cumulative I/O counters and optional `open_files`, with the existing
 PID/creation-time guards. Permission failures remain unavailable observations;
 identity failures remain `collection_errors`. It does not enumerate unselected
-processes, hash executables, call AI, or run actions. The existing `storage`
+processes, hash executables, call AI, or run actions. Process rules run locally
+when comparing snapshots. Rules needing hashes or signatures cannot match from
+the standard disk snapshot alone; callers can supply richer AFTER process
+bundles. The existing `storage`
 command and its size-only SQLite history are unchanged. Both commands also work
 through `python -m moonlight`.
 
@@ -87,9 +90,13 @@ remapped to the AFTER versions, and all report citations must resolve. Endpoint
 timestamps and values remain intact. Citation hashes are identifiers, not
 authentication of evidence.
 
-P3 process rules are not implemented in this checkout. The approved adapter
-accepts a JSON **array** of supplied results through `--p3-findings PATH`, or
-`tuple[P3Finding, ...]` through Python. It does not invent security findings:
+The local P3 engine evaluates every AFTER process bundle and supplies its
+matching rules to the existing adapter. `disk-link` therefore produces real
+process rule findings without a separate findings file. It joins IDs to the
+selected writer by the exact `PID:creation_time` subject, so a reused PID or a
+finding for another process cannot attach to the attribution. The optional
+`--p3-findings PATH` JSON **array**, or `tuple[P3Finding, ...]` in Python, remains
+available for additional supplied results:
 
 ```json
 [
@@ -103,11 +110,12 @@ accepts a JSON **array** of supplied results through `--p3-findings PATH`, or
 ]
 ```
 
-The IDs above illustrate the shape; replace them with actual IDs. Each finding
+The IDs above illustrate the optional input shape; replace them with actual IDs.
+Generated and supplied findings share the same validation. Each finding
 ID must be unique, `process_subject_id` must exactly match an AFTER process,
 and every cited observation must belong to that process's AFTER bundle. Empty,
 unknown, wrong-process and storage citations are rejected. The report retains
-the supplied rule/severity/citations and puts matching `p3_finding_ids` on each
+the rule/severity/citations and puts matching `p3_finding_ids` on each
 process comparison and the selected attribution. Consumers can discuss storage
 and security from one report without conflating suspicion with causation.
 

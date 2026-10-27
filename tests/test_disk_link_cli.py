@@ -13,7 +13,7 @@ from moonlight.core.evidence import SeverityHint
 from moonlight.storage.attribution_models import DiskLinkReport, DiskSnapshot, P3Finding
 from moonlight.storage.disk_snapshot import capture_disk_snapshot
 from moonlight.storage.scanner import StorageScanner
-from tests.test_disk_attribution import MIB, snapshot
+from tests.test_disk_attribution import MIB, snapshot, with_executable
 
 
 def test_cli_compares_two_saved_synthetic_snapshots(
@@ -40,6 +40,27 @@ def test_cli_compares_two_saved_synthetic_snapshots(
     assert output.isascii()
     assert report.findings[0].confidence == "high"
     assert not report.p3_findings
+
+
+def test_cli_generates_p3_findings_from_after_snapshot(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    before_file, after_file = tmp_path / "before.json", tmp_path / "after.json"
+    before_file.write_text(snapshot(tmp_path).model_dump_json(), encoding="utf-8")
+    after = with_executable(
+        snapshot(tmp_path, offset=10, size=11 * MIB, count=10 * MIB),
+        "C:/Users/Test/Temp/svchost.exe",
+    )
+    after_file.write_text(after.model_dump_json(), encoding="utf-8")
+    assert (
+        main(["disk-link", "--before", str(before_file), "--after", str(after_file)])
+        == 0
+    )
+    report = DiskLinkReport.model_validate_json(capsys.readouterr().out)
+    assert [finding.rule_id for finding in report.p3_findings] == [
+        "system_path_mismatch"
+    ]
+    assert report.findings[0].p3_finding_ids == (report.p3_findings[0].finding_id,)
 
 
 def test_cli_p3_contract_and_custom_growth_threshold(
