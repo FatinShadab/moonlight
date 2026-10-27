@@ -61,3 +61,29 @@ Database errors preserve current scan evidence and produce unavailable growth.
 The database persists history across runs; no retention or deletion job runs.
 Observations are sequential and changing files can affect totals: this is not
 an atomic filesystem snapshot or a measurement of allocated space.
+
+## Conservative classification
+
+`classify_storage` emits `clearly_safe`, `review_first` or `do_not_touch`, with
+fixed reason codes and supporting evidence IDs. These are investigation labels,
+not policy approval or permission to remove anything. No action is implemented.
+
+Protection always wins over a temp/cache allowlist, including ancestors that
+contain protected content. Windows known-folder queries include redirected
+Documents, Desktop, Pictures, Music, Videos and Public Documents. Conventional
+system/profile paths, personal-folder names, and common document/media extensions
+are protected too. A `.docx` in a temp folder and its containing temp folder are
+therefore do_not_touch. An allowlist cannot override that result.
+
+Default clearly_safe locations are the current user's LocalAppData `Temp`,
+`pip/Cache` and `Microsoft/Windows/INetCache`, provided location discovery and the
+relevant evidence are complete. Folders with excluded entries require review.
+Unknown locations, Downloads and installers remain review_first. A failed known
+folder query disables clearly_safe labels rather than guessing where documents
+were redirected. Known-folder lookup does not create directories.
+
+The [Windows known-folder contract](https://learn.microsoft.com/en-us/windows/win32/api/shlobj_core/nf-shlobj_core-shgetknownfolderpath)
+is isolated behind `KnownFolders`; location lists can be supplied directly for
+deterministic tests. Rule configuration is trusted local configuration, separate
+from untrusted filenames and evidence. Future cleanup would still need the
+project's independent policy checks, dry-run preview and explicit confirmation.
