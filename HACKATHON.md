@@ -107,6 +107,13 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 - Added configurable YAML 1.2 weights and thresholds, four-tier derivation, explicit missing-evidence reporting, and `moonlight rules --pid N` JSON output. Missing hash, path, signature, parent or command evidence caps high at review; two missing key kinds yield inconclusive.
 - Added synthetic positive/negative cases, tier and missing-evidence boundaries, immutable-value and determinism checks, and a generated rule catalog freshness check. No AI or action path is involved.
 
+## 2026-10-27 — Live Windows disk-link decoys
+
+- Added a harmless 60-second fixture with held-open and close-between-writes modes and ran each on Windows using two UTF-8 PowerShell disk snapshots of its temporary folder and exact writer PID.
+- Held-open writes yielded `high` correlation; close-between-writes yielded `unattributed` because `open_files` missed the short-lived handle, despite matching write-byte and folder-growth deltas. An initial launcher-PID selection also abstained as expected.
+- Recorded evidence IDs, timings, counter limits, and an unimplemented low-capped path-hint option in `docs/limitations.md`. No raw local snapshots were committed.
+- Validation: 346 tests, Ruff lint/format, strict mypy, and a separate strict mypy check of the decoy fixture passed.
+
 ## Planned evaluation
 
 The [PRD](Moonlight%20Product%20Requirements%20Document.md) defines process and storage rule metrics, citation coverage, schema validity, ablations, and robustness scenarios. Results will include the labeled-set size and reproduction method when measurements exist. No performance or safety metric is claimed yet.

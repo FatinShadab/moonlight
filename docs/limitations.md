@@ -2,6 +2,65 @@
 
 ## Process-to-disk links are correlations
 
+### Live Windows decoy check (2026-10-27)
+
+On Windows NT build 26300.9711 with Python 3.12.14 and psutil 7.2.2, I ran
+`fixtures/disk_link_decoy.py --parent PATH --mode hold|reopen` twice. Each run
+printed its temporary folder and **writer PID**; I used those printed values in
+the documented two-snapshot command sequence before the 60-second run ended.
+Each run created its own temporary folder and appended 1 MiB of dummy bytes
+every 0.4 seconds for about 60 seconds. The
+first kept `dummy.bin` open; the second reopened it for every write. No network,
+persistence, or child-process behavior is in the decoy. The two snapshots were
+about 31 seconds apart while each writer was running. I used the documented
+PowerShell `disk-snapshot ... | Set-Content -Encoding UTF8` form, with snapshot
+JSON outside the selected folder, then ran `moonlight disk-link`.
+
+| Run | Folder growth and process write delta | Open-file evidence | Result |
+| --- | --- | --- | --- |
+| File held open | 80,740,352 B growth; 79,691,776 B write delta; ratio 0.987; about 2.51 MiB/s growth. | `dummy.bin` present at both endpoints. | `high`, `path_and_write_correlation`. |
+| File reopened between writes | 80,740,352 B growth; 80,740,352 B write delta; ratio 1.000; about 2.50 MiB/s growth. | `open_files` observed, but `dummy.bin` absent at both endpoints. | `unattributed`, `no_path_linked_writer`. |
+
+The held-open result cites versioned folder-size IDs
+`ev-storage-folder_size-1a0dff49` and `ev-storage-folder_size-10d70876`, I/O IDs
+`ev-process-io_counters-915ea97a` and `ev-process-io_counters-27e06bdb`,
+open-file IDs `ev-process-open_files-c551f5d6` and
+`ev-process-open_files-15120566`, and derived link ID
+`ev-storage-process_disk_link-85f75265`. The reopen result cites folder IDs
+`ev-storage-folder_size-14f51d5d` and `ev-storage-folder_size-426a74cb`, I/O
+IDs `ev-process-io_counters-8380c214` and
+`ev-process-io_counters-6af0d259`, open-file IDs
+`ev-process-open_files-99af0467` and `ev-process-open_files-d55b954e`, and
+derived link ID `ev-storage-process_disk_link-7388b07f`. All folder-size,
+I/O, and open-file observations were available; folder totals were complete.
+The largest process-sample skew
+was 0.335 seconds, below the roughly 3.1-second budget. Neither run failed the
+1 MiB/s growth threshold, timestamp-skew guard, or 0.1–10 write/growth ratio
+range. The reopen run abstained solely because the target file was not listed
+at either endpoint.
+
+An initial held-open attempt accidentally selected the PID returned by
+`Start-Process` for the Python launcher, rather than the Python writer's own
+PID. The selected process reported zero write bytes and listed only redirected
+stdout/stderr files; despite 81,788,928 B of folder growth, the link was
+`unattributed` (`ev-storage-process_disk_link-0e0377f1`). The decoy now prints
+its own PID so snapshots can select the actual writer. Exact PID plus creation
+time remains essential; a launcher PID cannot stand in for a child process.
+
+The reopen case shows the main live limitation: Windows process I/O counters
+can track write activity, but they are process-wide and include I/O beyond
+regular file writes; they cannot identify the file or folder that grew. The
+endpoint `open_files` list can miss a file whose handle is closed between
+samples. A future optional working-directory or command-line path hint could
+be documented as a weaker signal capped at `low`, but it must never substitute
+for a demonstrated file write. This decoy's generated folder was not its
+working directory or a command-line argument, so that hint would not resolve
+this specific run. No weaker signal was implemented.
+
+The raw local snapshots contain unredacted process and path data and are not
+committed. These two runs are a smoke check, not a calibrated performance
+estimate or proof of authorship.
+
 Even `high` means a strong heuristic match **among selected processes**. It does
 not prove that the process wrote a particular file, account for every byte, or
 establish that the process is malicious. The thresholds have synthetic decision
@@ -48,7 +107,7 @@ paths. Shell redirection should write outside selected roots. Saved snapshots
 are neither authenticated nor a security boundary; validated strings remain
 untrusted. Reports re-identify endpoint observations for unambiguous citations.
 The P3 adapter verifies identity and citation membership, not the truth of
-supplied security conclusions; the P3 rule engine remains separate work.
+security conclusions. Local P3 findings remain review heuristics.
 
 This path is deterministic and rules-only. There is no AI call or action
 implementation, and no security finding or attribution authorizes termination,
