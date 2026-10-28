@@ -1,0 +1,128 @@
+{
+  "id": "proc_lsass_in_downloads",
+  "category": "simulated_suspicious",
+  "description": "Core security service lsass.exe name running out of user Downloads directory.",
+  "expected_tier": "high",
+  "expected_findings": [
+    "system_path_mismatch",
+    "unsigned_user_executable"
+  ],
+  "bundle": {
+    "subject_type": "process",
+    "subject_id": "3001:2026-10-28T12:00:00+00:00",
+    "items": [
+      {
+        "id": "ev-process-executable_path-c9df3f3e",
+        "source": "process_collector",
+        "kind": "executable_path",
+        "value": "C:/Users/alice/Downloads/lsass.exe",
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-command_line-5e385fab",
+        "source": "process_collector",
+        "kind": "command_line",
+        "value": [
+          "lsass.exe"
+        ],
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-user-9a318aa4",
+        "source": "process_collector",
+        "kind": "user",
+        "value": {
+          "user": "DESKTOP-TEST/alice"
+        },
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-parent_chain-e38234f2",
+        "source": "process_collector",
+        "kind": "parent_chain",
+        "value": [
+          {
+            "pid": 3000,
+            "name": "explorer.exe",
+            "path": "C:/Windows/explorer.exe"
+          }
+        ],
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-start_time-66f0d228",
+        "source": "process_collector",
+        "kind": "start_time",
+        "value": {
+          "start_time": "2026-10-28T12:00:00+00:00"
+        },
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-io_counters-9f7f12df",
+        "source": "process_collector",
+        "kind": "io_counters",
+        "value": {
+          "read_bytes": 10240,
+          "write_bytes": 1024
+        },
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-sha256-57a6ff67",
+        "source": "hash_collector",
+        "kind": "sha256",
+        "value": {
+          "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+        },
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-signature_status-15a6545f",
+        "source": "signature_collector",
+        "kind": "signature_status",
+        "value": {
+          "state": "unsigned"
+        },
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-network_activity-92b57b80",
+        "source": "process_collector",
+        "kind": "network_activity",
+        "value": [],
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      }
+    ]
+  },
+  "is_injection": false,
+  "injection_text": null,
+  "notes": "Synthetic evidence matching suspicious behavior rules; safe decoy data only."
+}

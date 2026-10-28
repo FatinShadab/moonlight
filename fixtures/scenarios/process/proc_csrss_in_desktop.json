@@ -1,0 +1,128 @@
+{
+  "id": "proc_csrss_in_desktop",
+  "category": "simulated_suspicious",
+  "description": "Subsystem binary csrss.exe running from Desktop without valid signature.",
+  "expected_tier": "high",
+  "expected_findings": [
+    "system_path_mismatch",
+    "unsigned_user_executable"
+  ],
+  "bundle": {
+    "subject_type": "process",
+    "subject_id": "3002:2026-10-28T12:00:00+00:00",
+    "items": [
+      {
+        "id": "ev-process-executable_path-631fd67e",
+        "source": "process_collector",
+        "kind": "executable_path",
+        "value": "C:/Users/alice/Desktop/csrss.exe",
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-command_line-14a45118",
+        "source": "process_collector",
+        "kind": "command_line",
+        "value": [
+          "csrss.exe"
+        ],
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-user-59d5fa02",
+        "source": "process_collector",
+        "kind": "user",
+        "value": {
+          "user": "DESKTOP-TEST/alice"
+        },
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-parent_chain-bf46bf59",
+        "source": "process_collector",
+        "kind": "parent_chain",
+        "value": [
+          {
+            "pid": 3001,
+            "name": "explorer.exe",
+            "path": "C:/Windows/explorer.exe"
+          }
+        ],
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-start_time-9768f893",
+        "source": "process_collector",
+        "kind": "start_time",
+        "value": {
+          "start_time": "2026-10-28T12:00:00+00:00"
+        },
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-io_counters-31463542",
+        "source": "process_collector",
+        "kind": "io_counters",
+        "value": {
+          "read_bytes": 10240,
+          "write_bytes": 1024
+        },
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-sha256-701fa94f",
+        "source": "hash_collector",
+        "kind": "sha256",
+        "value": {
+          "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+        },
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-signature_status-aa9e883b",
+        "source": "signature_collector",
+        "kind": "signature_status",
+        "value": {
+          "state": "unsigned"
+        },
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-network_activity-36ba3331",
+        "source": "process_collector",
+        "kind": "network_activity",
+        "value": [],
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      }
+    ]
+  },
+  "is_injection": false,
+  "injection_text": null,
+  "notes": "Synthetic evidence matching suspicious behavior rules; safe decoy data only."
+}

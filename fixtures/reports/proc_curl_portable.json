@@ -1,0 +1,57 @@
+{
+  "summary": "Portable cURL binary running unsigned with active outbound network connection.",
+  "risk_tier": "review",
+  "confidence": 0.78,
+  "observed_facts": [
+    {
+      "text": "Executable curl.exe running from C:/Tools/bin/curl.exe.",
+      "evidence_ids": [
+        "ev-process-executable_path-5ed46754"
+      ]
+    },
+    {
+      "text": "Digital signature status is unsigned.",
+      "evidence_ids": [
+        "ev-process-signature_status-04d92ec3"
+      ]
+    }
+  ],
+  "hypotheses": [
+    {
+      "text": "Administrative script or developer fetching web resources via CLI utility.",
+      "evidence_ids": [
+        "ev-process-executable_path-5ed46754"
+      ],
+      "likelihood": "medium"
+    }
+  ],
+  "benign_explanations": [
+    "Developer automated API query or script download."
+  ],
+  "missing_evidence": [],
+  "recommended_actions": [
+    {
+      "action_id": "copy_hash_to_clipboard",
+      "reason": "Verify SHA-256 hash of portable curl binary.",
+      "evidence_ids": [
+        "ev-process-sha256-f1ccd84a"
+      ]
+    },
+    {
+      "action_id": "open_file_location",
+      "reason": "Review surrounding scripts and tools.",
+      "evidence_ids": [
+        "ev-process-executable_path-5ed46754"
+      ]
+    }
+  ],
+  "uncertainty_notes": "Network communication requires review of target URL in command line.",
+  "metadata": {
+    "provider": "mock",
+    "model": "handwritten-fixture",
+    "prompt_version": "1.0.0",
+    "timestamp": "2026-10-28T12:00:00Z"
+  },
+  "is_fallback": false,
+  "fallback_reason": null
+}

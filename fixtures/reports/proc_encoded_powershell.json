@@ -1,0 +1,50 @@
+{
+  "summary": "PowerShell executing heavily encoded Base64 command argument (>160 characters).",
+  "risk_tier": "review",
+  "confidence": 0.88,
+  "observed_facts": [
+    {
+      "text": "Command line contains -EncodedCommand argument with over 160 Base64 characters.",
+      "evidence_ids": [
+        "ev-process-command_line-cbb0a2e6"
+      ]
+    },
+    {
+      "text": "Parent process is cmd.exe.",
+      "evidence_ids": [
+        "ev-process-parent_chain-f7731516"
+      ]
+    }
+  ],
+  "hypotheses": [
+    {
+      "text": "Encoded command used to obfuscate script instructions or complex administrative pipeline.",
+      "evidence_ids": [
+        "ev-process-command_line-cbb0a2e6"
+      ],
+      "likelihood": "medium"
+    }
+  ],
+  "benign_explanations": [
+    "Legitimate configuration management tools (SCCM, Ansible) occasionally use Base64 encoding."
+  ],
+  "missing_evidence": [],
+  "recommended_actions": [
+    {
+      "action_id": "mark_reviewed",
+      "reason": "Decode and manually inspect the Base64 command payload.",
+      "evidence_ids": [
+        "ev-process-command_line-cbb0a2e6"
+      ]
+    }
+  ],
+  "uncertainty_notes": "Decoded command content should be analyzed to confirm intent.",
+  "metadata": {
+    "provider": "mock",
+    "model": "handwritten-fixture",
+    "prompt_version": "1.0.0",
+    "timestamp": "2026-10-28T12:00:00Z"
+  },
+  "is_fallback": false,
+  "fallback_reason": null
+}
