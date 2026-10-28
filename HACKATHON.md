@@ -179,6 +179,19 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 - Validation: 474 tests pass across the suite, Ruff lint and format clean, strict mypy passes with 0 errors across 70 files.
 
 
+## 2026-10-28 — Reproducible labeled test set and scenarios
+
+- Built a reproducible labeled test suite of 97 synthetic scenarios using only safe, non-malicious synthetic evidence and safe material:
+  - 50 process scenarios: 20 common benign (signed system and vendor binaries evaluating to `low`), 15 benign-but-odd (unsigned developer tools, portable utilities, evaluating to `review`/`inconclusive`), and 15 simulated-suspicious (synthetic lookalike binaries, masqueraded paths, encoded arguments, outbound network activity).
+  - 36 storage scenarios: 12 clearly safe (user temp and application caches), 12 review first (system logs, crash dumps, developer builds), and 12 do-not-touch (Windows system directories, Program Files, user documents).
+  - 6 prompt injection defense scenarios: instruction-like text embedded in evidence fields (`ignore previous instructions`, `SYSTEM OVERRIDE`, closing tag escapes) verifying untrusted datamarking and escape containment.
+  - 5 API failure scenarios: provider timeouts, raw malformed non-JSON output, schema mismatches, hallucinated citations, and off-allowlist actions verifying orchestrator repair retry and rules-only fallback.
+- Added 10 handwritten expected-report fixtures with strict grounding and allowlisted actions in `fixtures/reports/` for offline replay by `MockProvider` and UI testing.
+- Added harmless live process decoy (`fixtures/harmless_process_decoy.py`) with bounded duration (≤ 60s), write limits (≤ 10 MiB), zero network/persistence/registry actions, and automatic cleanup.
+- Added comprehensive documentation in `docs/labeling.md` explaining labeling methodology, tier derivations, injection defense, API failure testing, and limitations.
+- Scenario loaders and models implemented in `src/moonlight/eval/scenarios.py` and exported via `moonlight.eval`.
+- Validation: 485 tests pass across the entire suite, live collection smoke test passes, Ruff lint/format clean repo-wide, and strict mypy passes with 0 errors across 74 source files.
+
 ## Planned evaluation
 
 The [PRD](Moonlight%20Product%20Requirements%20Document.md) defines process and storage rule metrics, citation coverage, schema validity, ablations, and robustness scenarios. Results will include the labeled-set size and reproduction method when measurements exist. No performance or safety metric is claimed yet.
