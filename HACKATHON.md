@@ -22,13 +22,18 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 | P6 | Rule engine and immutable evidence (PRs #7, #8) | maintainer to fill |
 | P7a | Process-to-disk rule findings & live decoy check (PRs #9, #10) | maintainer to fill |
 | P7b | Policy layer and consent flow (PR #12) | maintainer to fill |
-| P9 | Offline reasoning scaffold & mock provider (PR #13) | maintainer to fill |
+| P8 | Offline reasoning scaffold & mock provider (PR #13) | maintainer to fill |
+| Fix | Policy review and hardening (PR #14) | maintainer to fill |
+| Eval | Labeled scenarios and injection cases (PR #15) | maintainer to fill |
+| P8b | Ollama cloud provider hardening (PR #16) | maintainer to fill |
+| CI | Full history secret scanning with Gitleaks (PR #17) | maintainer to fill |
 
 ## History notes
 
 - **P5 commits**: The P5 commits (`47ee92d` through `544e225`) landed directly on `main` under different hashes than PR #5 lists.
 - **Tags and lineage**: The old tag `m1b-investigators` points to `ad8e7b5`, which is not on `main`. The new tag `m1b-investigators-main` marks the PR #9 merge commit `0af40a6`. Existing history was not rewritten.
 - **Model provider**: The Ollama cloud model, when used, is a temporary development placeholder; the submitted system uses the Meta Model API.
+- **Non-trivial merge resolutions**: PR #14 merged into main preserving policy review log entries; PR #15 merged with scratch generator script removed; feat/ollama-cloud-provider merged with main preserving union of eval exports in src/moonlight/eval/__init__.py.
 
 ## 2026-10-27 — Repository bootstrap
 
@@ -201,16 +206,32 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 ## 2026-10-28 — Reproducible labeled test set and scenarios
 
 - Built a reproducible labeled test suite of 103 synthetic scenarios using only safe, non-malicious synthetic evidence and safe material:
-  - 52 process scenarios: 20 common benign (enign), 17 benign-but-odd (enign_odd, including unavailable-evidence cases ccess_denied and alue_too_large evaluating to inconclusive), and 15 simulated-suspicious (suspicious_simulated). Each carries a label, expected tier, and one-line rationale.
-  - 36 storage scenarios: 12 clearly safe (safe), 12 review first (
-eview), and 12 do-not-touch (do-not-touch), including strictly protected OS and personal document locations that are never classified safe.
+  - 52 process scenarios: 20 common benign (benign), 17 benign-but-odd (benign_odd, including unavailable-evidence cases access_denied and value_too_large evaluating to inconclusive), and 15 simulated-suspicious (suspicious_simulated). Each carries a label, expected tier, and one-line rationale.
+  - 36 storage scenarios: 12 clearly safe (safe), 12 review first (review), and 12 do-not-touch (do-not-touch), including strictly protected OS and personal document locations that are never classified safe.
   - 10 prompt injection defense scenarios: instruction-like text embedded in evidence fields (process names, command lines, file paths, user fields) verifying untrusted datamarking containment and verifying that risk tiers derive from rules and evidence rather than injected text.
   - 5 API failure scenarios: provider timeouts, raw malformed non-JSON output, schema mismatches, hallucinated citations, and off-allowlist actions verifying orchestrator repair retry and rules-only fallback.
-- Added 10 handwritten expected-report fixtures with strict grounding and allowlisted actions in ixtures/reports/ for offline replay by MockProvider and UI testing.
-- Added harmless live process decoy (ixtures/harmless_process_decoy.py) with bounded duration (≤ 60s), write limits (≤ 10 MiB), zero network/persistence/registry actions, and automatic cleanup.
+- Added 10 handwritten expected-report fixtures with strict grounding and allowlisted actions in fixtures/reports/ for offline replay by MockProvider and UI testing.
+- Added harmless live process decoy (fixtures/harmless_process_decoy.py) with bounded duration (≤ 60s), write limits (≤ 10 MiB), zero network/persistence/registry actions, and automatic cleanup.
 - Added comprehensive documentation in docs/labeling.md detailing labeling methodology, labeler attribution, workstation bias, limitations, and an in-depth findings table analyzing all 12 scenarios where human expectations diverged from deterministic P3 engine derivations.
 - Scenario loaders and models implemented in src/moonlight/eval/scenarios.py and exported via moonlight.eval.
 - Validation: all tests pass across the entire suite, live collection smoke test passes, Ruff lint/format clean repo-wide, and strict mypy passes with 0 errors across all source files.
+
+## 2026-10-29 — Ollama Cloud provider hardening (PR #16)
+
+- Hardened OllamaCloudProvider base URL handling: strictly requires HTTPS scheme (default https://ollama.com), refuses custom hosts unless allow_custom_host is explicitly configured, and refuses to follow HTTP redirects (follow_redirects=False).
+- Enforced synthetic fixture evidence boundary: scripts/ollama_smoke.py uses synthetic sample bundles only; CLI moonlight investigate requires an explicit --allow-real-evidence flag when targeting non-meta providers on non-fixture inputs and prints a clear warning to stderr.
+- Hardened provider-isolated response cache: cache keys incorporate (provider, model, payload_hash, prompt_version, report_schema_version, structured_output_mode); cached reports are re-validated by the grounding validator on read and discarded if invalid.
+- Structured output schema fallback: requests schema-mode JSON by default; falls back to plain JSON mode only once and only when an HTTP 400 response clearly indicates the schema format is unsupported; records structured_output_mode in report metadata.
+- Rate limiting and retry bounds: capped Retry-After header delay at 30 seconds; bounded total cumulative retry sleep time by max_total_retry_time.
+- Secrets protection: API keys are never cached, logged, or exposed in repr.
+- Headless Qt setup: added tests/conftest.py with offscreen platform setting so PySide6 tests run headlessly on CI.
+- Validation: 510 tests pass across the entire suite; Ruff lint/format clean repo-wide; strict mypy passes with 0 errors across 81 source files.
+
+## 2026-10-29 — Full history secret scanning with Gitleaks (PR #17)
+
+- Added a dedicated CI job (gitleaks) scanning the full commit history on every push and pull request with Gitleaks pinned to version 8.30.1 (matching .pre-commit-config.yaml) using actions/checkout with fetch-depth: 0.
+- Runs gitleaks detect --source=. --verbose --redact, failing on any secret finding without exposing raw secrets in CI logs.
+- Validation: clean scan across all commits in repository history.
 
 ## Planned evaluation
 
