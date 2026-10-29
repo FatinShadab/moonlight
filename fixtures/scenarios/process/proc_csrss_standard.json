@@ -1,0 +1,130 @@
+{
+  "id": "proc_csrss_standard",
+  "category": "common_benign",
+  "description": "Client Server Runtime Process running from System32 with valid signature.",
+  "expected_tier": "low",
+  "expected_findings": [
+    "valid_system_signature"
+  ],
+  "bundle": {
+    "subject_type": "process",
+    "subject_id": "1005:2026-10-28T12:00:00+00:00",
+    "items": [
+      {
+        "id": "ev-process-executable_path-20d59570",
+        "source": "process_collector",
+        "kind": "executable_path",
+        "value": "C:/Windows/System32/csrss.exe",
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-command_line-37ed7b82",
+        "source": "process_collector",
+        "kind": "command_line",
+        "value": [
+          "C:/Windows/System32/csrss.exe",
+          "ObjectDirectory=\\Windows"
+        ],
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-user-cc0924d1",
+        "source": "process_collector",
+        "kind": "user",
+        "value": {
+          "user": "NT AUTHORITY/SYSTEM"
+        },
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-parent_chain-01bae8be",
+        "source": "process_collector",
+        "kind": "parent_chain",
+        "value": [
+          {
+            "pid": 1004,
+            "name": "smss.exe",
+            "path": "C:/Windows/System32/smss.exe"
+          }
+        ],
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-start_time-1ce4afd7",
+        "source": "process_collector",
+        "kind": "start_time",
+        "value": {
+          "start_time": "2026-10-28T12:00:00+00:00"
+        },
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-io_counters-51440390",
+        "source": "process_collector",
+        "kind": "io_counters",
+        "value": {
+          "read_bytes": 10240,
+          "write_bytes": 1024
+        },
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-sha256-5660aa5c",
+        "source": "hash_collector",
+        "kind": "sha256",
+        "value": {
+          "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+        },
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-signature_status-1c056087",
+        "source": "signature_collector",
+        "kind": "signature_status",
+        "value": {
+          "state": "signed_valid"
+        },
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-network_activity-adece7df",
+        "source": "process_collector",
+        "kind": "network_activity",
+        "value": [],
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      }
+    ]
+  },
+  "is_injection": false,
+  "injection_text": null,
+  "notes": "Legitimate software running from protected system or vendor directory.",
+  "label": "benign",
+  "rationale": "Client Server Runtime Process running from System32 with valid signature."
+}

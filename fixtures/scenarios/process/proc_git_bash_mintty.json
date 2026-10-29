@@ -1,0 +1,129 @@
+{
+  "id": "proc_git_bash_mintty",
+  "category": "benign_but_odd",
+  "description": "Git for Windows terminal emulator with unsigned Unix emulation binary.",
+  "expected_tier": "low",
+  "expected_findings": [],
+  "bundle": {
+    "subject_type": "process",
+    "subject_id": "2002:2026-10-28T12:00:00+00:00",
+    "items": [
+      {
+        "id": "ev-process-executable_path-8f1c0dda",
+        "source": "process_collector",
+        "kind": "executable_path",
+        "value": "C:/Program Files/Git/usr/bin/mintty.exe",
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-command_line-34a00622",
+        "source": "process_collector",
+        "kind": "command_line",
+        "value": [
+          "C:/Program Files/Git/usr/bin/mintty.exe",
+          "-i",
+          "/etc/minttyrc"
+        ],
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-user-050256b9",
+        "source": "process_collector",
+        "kind": "user",
+        "value": {
+          "user": "DESKTOP-TEST/alice"
+        },
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-parent_chain-64baf710",
+        "source": "process_collector",
+        "kind": "parent_chain",
+        "value": [
+          {
+            "pid": 2001,
+            "name": "bash.exe",
+            "path": "C:/Program Files/Git/bin/bash.exe"
+          }
+        ],
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-start_time-2f7a1231",
+        "source": "process_collector",
+        "kind": "start_time",
+        "value": {
+          "start_time": "2026-10-28T12:00:00+00:00"
+        },
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-io_counters-2647d09b",
+        "source": "process_collector",
+        "kind": "io_counters",
+        "value": {
+          "read_bytes": 10240,
+          "write_bytes": 1024
+        },
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-sha256-4e632f0c",
+        "source": "hash_collector",
+        "kind": "sha256",
+        "value": {
+          "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+        },
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-signature_status-82403a27",
+        "source": "signature_collector",
+        "kind": "signature_status",
+        "value": {
+          "state": "unsigned"
+        },
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-network_activity-6685b7b1",
+        "source": "process_collector",
+        "kind": "network_activity",
+        "value": [],
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      }
+    ]
+  },
+  "is_injection": false,
+  "injection_text": null,
+  "notes": "Unsigned portable tool or developer toolchain; legitimate but non-standard.",
+  "label": "benign_odd",
+  "rationale": "Git for Windows terminal emulator with unsigned Unix emulation binary."
+}

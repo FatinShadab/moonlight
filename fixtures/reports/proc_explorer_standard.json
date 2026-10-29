@@ -1,0 +1,50 @@
+{
+  "summary": "Standard Windows Explorer shell running under interactive user session with valid digital signature.",
+  "risk_tier": "low",
+  "confidence": 0.95,
+  "observed_facts": [
+    {
+      "text": "Executable is explorer.exe located in C:/Windows.",
+      "evidence_ids": [
+        "ev-process-executable_path-5b67aff6"
+      ]
+    },
+    {
+      "text": "Signature verified as signed_valid.",
+      "evidence_ids": [
+        "ev-process-signature_status-21a48ce6"
+      ]
+    }
+  ],
+  "hypotheses": [
+    {
+      "text": "Normal interactive user desktop shell.",
+      "evidence_ids": [
+        "ev-process-executable_path-5b67aff6"
+      ],
+      "likelihood": "high"
+    }
+  ],
+  "benign_explanations": [
+    "Core desktop user interface environment."
+  ],
+  "missing_evidence": [],
+  "recommended_actions": [
+    {
+      "action_id": "mark_reviewed",
+      "reason": "Legitimate Windows desktop shell.",
+      "evidence_ids": [
+        "ev-process-executable_path-5b67aff6"
+      ]
+    }
+  ],
+  "uncertainty_notes": "Standard user session process.",
+  "metadata": {
+    "provider": "mock",
+    "model": "handwritten-fixture",
+    "prompt_version": "1.0.0",
+    "timestamp": "2026-10-28T12:00:00Z"
+  },
+  "is_fallback": false,
+  "fallback_reason": null
+}

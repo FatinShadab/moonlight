@@ -1,0 +1,129 @@
+{
+  "id": "proc_winlogon_standard",
+  "category": "common_benign",
+  "description": "Windows Logon Process running in System32 spawned by smss.exe.",
+  "expected_tier": "low",
+  "expected_findings": [
+    "valid_system_signature"
+  ],
+  "bundle": {
+    "subject_type": "process",
+    "subject_id": "1006:2026-10-28T12:00:00+00:00",
+    "items": [
+      {
+        "id": "ev-process-executable_path-5f368346",
+        "source": "process_collector",
+        "kind": "executable_path",
+        "value": "C:/Windows/System32/winlogon.exe",
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-command_line-f3b8dcfa",
+        "source": "process_collector",
+        "kind": "command_line",
+        "value": [
+          "winlogon.exe"
+        ],
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-user-aad05d5e",
+        "source": "process_collector",
+        "kind": "user",
+        "value": {
+          "user": "NT AUTHORITY/SYSTEM"
+        },
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-parent_chain-ea008e96",
+        "source": "process_collector",
+        "kind": "parent_chain",
+        "value": [
+          {
+            "pid": 1005,
+            "name": "smss.exe",
+            "path": "C:/Windows/System32/smss.exe"
+          }
+        ],
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-start_time-946a2f10",
+        "source": "process_collector",
+        "kind": "start_time",
+        "value": {
+          "start_time": "2026-10-28T12:00:00+00:00"
+        },
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-io_counters-a8063b2f",
+        "source": "process_collector",
+        "kind": "io_counters",
+        "value": {
+          "read_bytes": 10240,
+          "write_bytes": 1024
+        },
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-sha256-56b59cc1",
+        "source": "hash_collector",
+        "kind": "sha256",
+        "value": {
+          "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+        },
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-signature_status-93328d75",
+        "source": "signature_collector",
+        "kind": "signature_status",
+        "value": {
+          "state": "signed_valid"
+        },
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-network_activity-4fd09f2d",
+        "source": "process_collector",
+        "kind": "network_activity",
+        "value": [],
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      }
+    ]
+  },
+  "is_injection": false,
+  "injection_text": null,
+  "notes": "Legitimate software running from protected system or vendor directory.",
+  "label": "benign",
+  "rationale": "Windows Logon Process running in System32 spawned by smss.exe."
+}

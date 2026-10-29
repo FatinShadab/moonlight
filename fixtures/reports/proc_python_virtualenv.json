@@ -1,0 +1,50 @@
+{
+  "summary": "Unsigned Python interpreter executing from a project virtual environment directory.",
+  "risk_tier": "review",
+  "confidence": 0.82,
+  "observed_facts": [
+    {
+      "text": "Python interpreter running from C:/Projects/myapp/.venv/Scripts/python.exe.",
+      "evidence_ids": [
+        "ev-process-executable_path-46e9f070"
+      ]
+    },
+    {
+      "text": "Signature state is unsigned.",
+      "evidence_ids": [
+        "ev-process-signature_status-19d26ce8"
+      ]
+    }
+  ],
+  "hypotheses": [
+    {
+      "text": "Developer executing local Python script in isolated project environment.",
+      "evidence_ids": [
+        "ev-process-executable_path-46e9f070"
+      ],
+      "likelihood": "high"
+    }
+  ],
+  "benign_explanations": [
+    "Virtual environment copies or links python binaries without re-signing."
+  ],
+  "missing_evidence": [],
+  "recommended_actions": [
+    {
+      "action_id": "open_file_location",
+      "reason": "Verify the project workspace and script being executed.",
+      "evidence_ids": [
+        "ev-process-executable_path-46e9f070"
+      ]
+    }
+  ],
+  "uncertainty_notes": "Standard developer workflow pattern.",
+  "metadata": {
+    "provider": "mock",
+    "model": "handwritten-fixture",
+    "prompt_version": "1.0.0",
+    "timestamp": "2026-10-28T12:00:00Z"
+  },
+  "is_fallback": false,
+  "fallback_reason": null
+}

@@ -1,0 +1,57 @@
+{
+  "summary": "Process binary in System32 has invalid or broken digital signature verification status.",
+  "risk_tier": "review",
+  "confidence": 0.89,
+  "observed_facts": [
+    {
+      "text": "Digital signature state returned signed_invalid.",
+      "evidence_ids": [
+        "ev-process-signature_status-1cabf387"
+      ]
+    },
+    {
+      "text": "Executable located at C:/Windows/System32/svchost.exe.",
+      "evidence_ids": [
+        "ev-process-executable_path-6d63b81f"
+      ]
+    }
+  ],
+  "hypotheses": [
+    {
+      "text": "Binary file modification, disk corruption, or invalid certificate chain.",
+      "evidence_ids": [
+        "ev-process-signature_status-1cabf387"
+      ],
+      "likelihood": "medium"
+    }
+  ],
+  "benign_explanations": [
+    "Certificate expiration or filesystem bit rot."
+  ],
+  "missing_evidence": [],
+  "recommended_actions": [
+    {
+      "action_id": "copy_hash_to_clipboard",
+      "reason": "Verify file integrity against Windows component store.",
+      "evidence_ids": [
+        "ev-process-sha256-dfa9bbba"
+      ]
+    },
+    {
+      "action_id": "open_file_location",
+      "reason": "Inspect file digital signature details in properties dialog.",
+      "evidence_ids": [
+        "ev-process-executable_path-6d63b81f"
+      ]
+    }
+  ],
+  "uncertainty_notes": "Requires distinguishing filesystem corruption from deliberate tampering.",
+  "metadata": {
+    "provider": "mock",
+    "model": "handwritten-fixture",
+    "prompt_version": "1.0.0",
+    "timestamp": "2026-10-28T12:00:00Z"
+  },
+  "is_fallback": false,
+  "fallback_reason": null
+}

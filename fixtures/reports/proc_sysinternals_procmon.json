@@ -1,0 +1,57 @@
+{
+  "summary": "Sysinternals Process Monitor portable utility running unsigned from local administrative tools directory.",
+  "risk_tier": "review",
+  "confidence": 0.85,
+  "observed_facts": [
+    {
+      "text": "Executable is Procmon.exe located in C:/Tools/Sysinternals/Procmon.exe.",
+      "evidence_ids": [
+        "ev-process-executable_path-18025899"
+      ]
+    },
+    {
+      "text": "Signature status is unsigned in local directory.",
+      "evidence_ids": [
+        "ev-process-signature_status-41011b6d"
+      ]
+    }
+  ],
+  "hypotheses": [
+    {
+      "text": "Legitimate administrative diagnostic tool executed by system administrator.",
+      "evidence_ids": [
+        "ev-process-executable_path-18025899"
+      ],
+      "likelihood": "high"
+    }
+  ],
+  "benign_explanations": [
+    "Common portable troubleshooting tool used by IT personnel."
+  ],
+  "missing_evidence": [],
+  "recommended_actions": [
+    {
+      "action_id": "copy_hash_to_clipboard",
+      "reason": "Verify hash against known Microsoft Sysinternals distribution hashes.",
+      "evidence_ids": [
+        "ev-process-sha256-ec216974"
+      ]
+    },
+    {
+      "action_id": "open_file_location",
+      "reason": "Inspect tools directory contents and properties.",
+      "evidence_ids": [
+        "ev-process-executable_path-18025899"
+      ]
+    }
+  ],
+  "uncertainty_notes": "Unsigned portable tool warranting manual verification.",
+  "metadata": {
+    "provider": "mock",
+    "model": "handwritten-fixture",
+    "prompt_version": "1.0.0",
+    "timestamp": "2026-10-28T12:00:00Z"
+  },
+  "is_fallback": false,
+  "fallback_reason": null
+}

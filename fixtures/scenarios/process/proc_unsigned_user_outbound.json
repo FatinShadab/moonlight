@@ -1,0 +1,137 @@
+{
+  "id": "proc_unsigned_user_outbound",
+  "category": "simulated_suspicious",
+  "description": "Unsigned binary in user AppData establishing outbound network connections.",
+  "expected_tier": "high",
+  "expected_findings": [
+    "unsigned_user_executable",
+    "outbound_unsigned_user"
+  ],
+  "bundle": {
+    "subject_type": "process",
+    "subject_id": "3007:2026-10-28T12:00:00+00:00",
+    "items": [
+      {
+        "id": "ev-process-executable_path-4c56a3cc",
+        "source": "process_collector",
+        "kind": "executable_path",
+        "value": "C:/Users/alice/AppData/Local/update_helper.exe",
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-command_line-58d2cb28",
+        "source": "process_collector",
+        "kind": "command_line",
+        "value": [
+          "update_helper.exe"
+        ],
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-user-c5503f0f",
+        "source": "process_collector",
+        "kind": "user",
+        "value": {
+          "user": "DESKTOP-TEST/alice"
+        },
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-parent_chain-131d1884",
+        "source": "process_collector",
+        "kind": "parent_chain",
+        "value": [
+          {
+            "pid": 3006,
+            "name": "explorer.exe",
+            "path": "C:/Windows/explorer.exe"
+          }
+        ],
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-start_time-0b242ca4",
+        "source": "process_collector",
+        "kind": "start_time",
+        "value": {
+          "start_time": "2026-10-28T12:00:00+00:00"
+        },
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-io_counters-19a88987",
+        "source": "process_collector",
+        "kind": "io_counters",
+        "value": {
+          "read_bytes": 10240,
+          "write_bytes": 1024
+        },
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-sha256-4df95a1b",
+        "source": "hash_collector",
+        "kind": "sha256",
+        "value": {
+          "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+        },
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-signature_status-4d406f6d",
+        "source": "signature_collector",
+        "kind": "signature_status",
+        "value": {
+          "state": "unsigned"
+        },
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      },
+      {
+        "id": "ev-process-network_activity-e02e94dc",
+        "source": "process_collector",
+        "kind": "network_activity",
+        "value": [
+          {
+            "remote": [
+              "198.51.100.24",
+              443
+            ]
+          }
+        ],
+        "severity_hint": "info",
+        "availability": "observed",
+        "reason": null,
+        "timestamp": "2026-10-28T12:00:00Z"
+      }
+    ]
+  },
+  "is_injection": false,
+  "injection_text": null,
+  "notes": "Synthetic evidence matching suspicious behavior rules; safe decoy data only.",
+  "label": "suspicious_simulated",
+  "rationale": "Unsigned binary in user AppData establishing outbound network connections."
+}
