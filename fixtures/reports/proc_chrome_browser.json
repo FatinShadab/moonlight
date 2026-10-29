@@ -1,0 +1,50 @@
+{
+  "summary": "Google Chrome browser running from standard Program Files application directory.",
+  "risk_tier": "low",
+  "confidence": 0.92,
+  "observed_facts": [
+    {
+      "text": "Executable located at C:/Program Files/Google/Chrome/Application/chrome.exe.",
+      "evidence_ids": [
+        "ev-process-executable_path-04fd93f5"
+      ]
+    },
+    {
+      "text": "Binary possesses signed_valid vendor signature from Google LLC.",
+      "evidence_ids": [
+        "ev-process-signature_status-2b518a3c"
+      ]
+    }
+  ],
+  "hypotheses": [
+    {
+      "text": "Standard web browsing activity by interactive user.",
+      "evidence_ids": [
+        "ev-process-executable_path-04fd93f5"
+      ],
+      "likelihood": "high"
+    }
+  ],
+  "benign_explanations": [
+    "Legitimate web browser installation."
+  ],
+  "missing_evidence": [],
+  "recommended_actions": [
+    {
+      "action_id": "mark_reviewed",
+      "reason": "Verified vendor browser application.",
+      "evidence_ids": [
+        "ev-process-executable_path-04fd93f5"
+      ]
+    }
+  ],
+  "uncertainty_notes": "Routine application execution.",
+  "metadata": {
+    "provider": "mock",
+    "model": "handwritten-fixture",
+    "prompt_version": "1.0.0",
+    "timestamp": "2026-10-28T12:00:00Z"
+  },
+  "is_fallback": false,
+  "fallback_reason": null
+}

@@ -1,0 +1,57 @@
+{
+  "summary": "Standard Windows Service Host process executing from System32 with valid Microsoft signature.",
+  "risk_tier": "low",
+  "confidence": 0.98,
+  "observed_facts": [
+    {
+      "text": "Executable path is C:/Windows/System32/svchost.exe.",
+      "evidence_ids": [
+        "ev-process-executable_path-92ce4abc"
+      ]
+    },
+    {
+      "text": "Digital signature verified as signed_valid by Microsoft Windows.",
+      "evidence_ids": [
+        "ev-process-signature_status-c32c4132"
+      ]
+    },
+    {
+      "text": "Parent process is services.exe as expected for Windows services.",
+      "evidence_ids": [
+        "ev-process-parent_chain-2a5b6216"
+      ]
+    }
+  ],
+  "hypotheses": [
+    {
+      "text": "Legitimate operating system service host instance hosting Windows system services.",
+      "evidence_ids": [
+        "ev-process-executable_path-92ce4abc",
+        "ev-process-parent_chain-2a5b6216"
+      ],
+      "likelihood": "high"
+    }
+  ],
+  "benign_explanations": [
+    "Essential Windows operating system service host component."
+  ],
+  "missing_evidence": [],
+  "recommended_actions": [
+    {
+      "action_id": "mark_reviewed",
+      "reason": "Standard operating system binary running in normal operational parameters.",
+      "evidence_ids": [
+        "ev-process-executable_path-92ce4abc"
+      ]
+    }
+  ],
+  "uncertainty_notes": "Baseline system service activity with no behavioral anomalies.",
+  "metadata": {
+    "provider": "mock",
+    "model": "handwritten-fixture",
+    "prompt_version": "1.0.0",
+    "timestamp": "2026-10-28T12:00:00Z"
+  },
+  "is_fallback": false,
+  "fallback_reason": null
+}

@@ -1,0 +1,50 @@
+{
+  "summary": "Windows Notepad text editor launched from System32 by user with valid digital signature.",
+  "risk_tier": "low",
+  "confidence": 0.96,
+  "observed_facts": [
+    {
+      "text": "Binary is notepad.exe in C:/Windows/System32.",
+      "evidence_ids": [
+        "ev-process-executable_path-e5cb0b09"
+      ]
+    },
+    {
+      "text": "Digital signature status is signed_valid.",
+      "evidence_ids": [
+        "ev-process-signature_status-ede72831"
+      ]
+    }
+  ],
+  "hypotheses": [
+    {
+      "text": "Interactive user text file editing.",
+      "evidence_ids": [
+        "ev-process-executable_path-e5cb0b09"
+      ],
+      "likelihood": "high"
+    }
+  ],
+  "benign_explanations": [
+    "Built-in Windows text editor."
+  ],
+  "missing_evidence": [],
+  "recommended_actions": [
+    {
+      "action_id": "mark_reviewed",
+      "reason": "Standard system accessory utility.",
+      "evidence_ids": [
+        "ev-process-executable_path-e5cb0b09"
+      ]
+    }
+  ],
+  "uncertainty_notes": "Standard user accessory tool.",
+  "metadata": {
+    "provider": "mock",
+    "model": "handwritten-fixture",
+    "prompt_version": "1.0.0",
+    "timestamp": "2026-10-28T12:00:00Z"
+  },
+  "is_fallback": false,
+  "fallback_reason": null
+}

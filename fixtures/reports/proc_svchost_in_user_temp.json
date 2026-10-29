@@ -1,0 +1,64 @@
+{
+  "summary": "High-risk anomaly: System process name svchost.exe running unsigned from user temporary folder.",
+  "risk_tier": "high",
+  "confidence": 0.96,
+  "observed_facts": [
+    {
+      "text": "Binary name svchost.exe located in C:/Users/alice/AppData/Local/Temp/svchost.exe instead of System32.",
+      "evidence_ids": [
+        "ev-process-executable_path-a1e10640"
+      ]
+    },
+    {
+      "text": "Signature state is unsigned, violating expected Microsoft Windows signing for system names.",
+      "evidence_ids": [
+        "ev-process-signature_status-86700724"
+      ]
+    },
+    {
+      "text": "Parent process is interactive explorer.exe rather than services.exe.",
+      "evidence_ids": [
+        "ev-process-parent_chain-6a92dd3b"
+      ]
+    }
+  ],
+  "hypotheses": [
+    {
+      "text": "Masquerading attack attempting to disguise executable as legitimate system service host.",
+      "evidence_ids": [
+        "ev-process-executable_path-a1e10640",
+        "ev-process-signature_status-86700724"
+      ],
+      "likelihood": "high"
+    }
+  ],
+  "benign_explanations": [
+    "Unlikely to be benign; potential poorly designed installer or synthetic test fixture."
+  ],
+  "missing_evidence": [],
+  "recommended_actions": [
+    {
+      "action_id": "open_file_location",
+      "reason": "Inspect temporary folder and isolate suspicious binary.",
+      "evidence_ids": [
+        "ev-process-executable_path-a1e10640"
+      ]
+    },
+    {
+      "action_id": "copy_hash_to_clipboard",
+      "reason": "Check file SHA-256 against malware intelligence databases.",
+      "evidence_ids": [
+        "ev-process-sha256-6373d665"
+      ]
+    }
+  ],
+  "uncertainty_notes": "Definitive system path mismatch and unsigned state strongly indicate masquerading.",
+  "metadata": {
+    "provider": "mock",
+    "model": "handwritten-fixture",
+    "prompt_version": "1.0.0",
+    "timestamp": "2026-10-28T12:00:00Z"
+  },
+  "is_fallback": false,
+  "fallback_reason": null
+}
