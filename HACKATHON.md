@@ -179,6 +179,8 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 - Validation: 474 tests pass across the suite, Ruff lint and format clean, strict mypy passes with 0 errors across 70 files.
 
 
+- 2026-10-28: Bound policy execution to preview confirmation tokens, gated recycling via storage classifier, hardened path alias resolution, and unblocked mark_reviewed for process names.
+
 ## Planned evaluation
 
 The [PRD](Moonlight%20Product%20Requirements%20Document.md) defines process and storage rule metrics, citation coverage, schema validity, ablations, and robustness scenarios. Results will include the labeled-set size and reproduction method when measurements exist. No performance or safety metric is claimed yet.

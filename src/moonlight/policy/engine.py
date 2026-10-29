@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import re
+import subprocess
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
@@ -23,9 +25,12 @@ from moonlight.policy.actions import (
 from moonlight.policy.audit import PolicyAuditLogger
 from moonlight.policy.paths import (
     detect_symlink_escape,
+    is_reparse_point,
     normalize_and_validate_path,
 )
 from moonlight.policy.protected import (
+    CRITICAL_PIDS,
+    classify_path_storage,
     is_critical_process,
 )
 from moonlight.rules.storage import StorageLocations
@@ -35,6 +40,42 @@ HEX_HASH_REGEX = re.compile(r"^[0-9a-fA-F]{32,128}$")
 
 class PolicyViolationError(Exception):
     """Raised when an action violates safety policy."""
+
+
+def generate_confirmation_token(
+    action_type: str,
+    target_path: str,
+    size_bytes: int | None,
+    mtime_ns: int | None,
+) -> str:
+    """Generate a confirmation token bound to action, path identity, size, and mtime."""
+    norm_path = os.path.normcase(os.path.abspath(target_path))
+    payload = f"{action_type}|{norm_path}|{size_bytes or 0}|{mtime_ns or 0}"
+    digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()[:32]
+    return f"cfm_{digest}"
+
+
+def launch_file_location(
+    target_path: Path | str,
+    runner: Callable[[Sequence[str]], Any] | None = None,
+) -> list[str]:
+    """Open Windows Explorer with target file selected via an argument list.
+
+    Never executes or directly opens the target file.
+    Uses Explorer with file selected via argument list (no shell, no os.startfile).
+    """
+    p = Path(target_path)
+    resolved = str(p.resolve()) if p.exists() else str(p)
+    if p.is_file():
+        cmd = ["explorer.exe", f"/select,{resolved}"]
+    else:
+        cmd = ["explorer.exe", resolved]
+
+    if runner is not None:
+        runner(cmd)
+    else:
+        subprocess.run(cmd, check=False)
+    return cmd
 
 
 class PolicyLayer:
@@ -109,28 +150,51 @@ class PolicyLayer:
                 raise PolicyViolationError(reason)
             return decision
 
-        # 2. Critical process check
-        is_crit, crit_reason = is_critical_process(
-            process_name=act.target_process, pid=act.target_pid
-        )
-        if is_crit:
-            reason = (
-                crit_reason or "Critical Windows system process cannot be targeted."
+        # 2. Critical process check:
+        # For mark_reviewed: Only PID 0 and 4 are blocked; do NOT block by process name.
+        # Allows marking rogue/masquerading processes (e.g. svchost.exe) as reviewed.
+        if action_type == ActionType.MARK_REVIEWED:
+            if act.target_pid is not None and act.target_pid in CRITICAL_PIDS:
+                reason = (
+                    f"PID {act.target_pid} is a critical Windows system process and "
+                    "cannot be targeted."
+                )
+                self._audit_logger.log_event(
+                    event_type="validation",
+                    action_type=action_type,
+                    status="rejected",
+                    allowed=False,
+                    target=str(act.target_pid),
+                    reason=reason,
+                )
+                decision = ValidationDecision(
+                    action=act, allowed=False, rejection_reason=reason
+                )
+                if raise_on_reject:
+                    raise PolicyViolationError(reason)
+                return decision
+        else:
+            is_crit, crit_reason = is_critical_process(
+                process_name=act.target_process, pid=act.target_pid
             )
-            self._audit_logger.log_event(
-                event_type="validation",
-                action_type=action_type,
-                status="rejected",
-                allowed=False,
-                target=act.target_process or str(act.target_pid),
-                reason=reason,
-            )
-            decision = ValidationDecision(
-                action=act, allowed=False, rejection_reason=reason
-            )
-            if raise_on_reject:
-                raise PolicyViolationError(reason)
-            return decision
+            if is_crit:
+                reason = (
+                    crit_reason or "Critical Windows system process cannot be targeted."
+                )
+                self._audit_logger.log_event(
+                    event_type="validation",
+                    action_type=action_type,
+                    status="rejected",
+                    allowed=False,
+                    target=act.target_process or str(act.target_pid),
+                    reason=reason,
+                )
+                decision = ValidationDecision(
+                    action=act, allowed=False, rejection_reason=reason
+                )
+                if raise_on_reject:
+                    raise PolicyViolationError(reason)
+                return decision
 
         # 3. Action-specific validation
         if action_type == ActionType.MOVE_TO_RECYCLE_BIN:
@@ -164,6 +228,34 @@ class PolicyLayer:
                     status="rejected",
                     allowed=False,
                     target=act.target_path,
+                    reason=reason,
+                )
+                decision = ValidationDecision(
+                    action=act, allowed=False, rejection_reason=reason
+                )
+                if raise_on_reject:
+                    raise PolicyViolationError(reason)
+                return decision
+
+            # Gate move_to_recycle_bin via storage classifier (rules/storage.py)
+            target_str = val_res.resolved_path or act.target_path
+            category, class_reason = classify_path_storage(
+                target_str,
+                locations=self._locations,
+                extra_protected=self._extra_protected,
+            )
+            if category == "do_not_touch":
+                reason = (
+                    "Action 'move_to_recycle_bin' is strictly prohibited for "
+                    f"path '{target_str}' classified as 'do_not_touch' "
+                    f"({class_reason})."
+                )
+                self._audit_logger.log_event(
+                    event_type="validation",
+                    action_type=action_type,
+                    status="rejected",
+                    allowed=False,
+                    target=target_str,
                     reason=reason,
                 )
                 decision = ValidationDecision(
@@ -361,6 +453,62 @@ class PolicyLayer:
                     timestamp=now,
                 )
 
+            # Reject reparse points (junctions, symlinks) as recycle targets
+            if is_reparse_point(target_path):
+                reason = (
+                    f"Target path '{resolved_str}' is a reparse point "
+                    "(junction or symlink), which cannot be targeted for recycling."
+                )
+                self._audit_logger.log_event(
+                    event_type="preview",
+                    action_type=act.action_type,
+                    status="rejected",
+                    allowed=False,
+                    target=resolved_str,
+                    preview_id=preview_id,
+                    reason=reason,
+                )
+                return ActionPreview(
+                    preview_id=preview_id,
+                    action=act,
+                    allowed=False,
+                    rejection_reason=reason,
+                    description=f"Action blocked: {reason}",
+                    requires_confirmation=False,
+                    timestamp=now,
+                )
+
+            # Gated by storage classifier
+            category, class_reason = classify_path_storage(
+                resolved_str,
+                locations=self._locations,
+                extra_protected=self._extra_protected,
+            )
+            if category == "do_not_touch":
+                reason = (
+                    "Action 'move_to_recycle_bin' is strictly prohibited for "
+                    f"path '{resolved_str}' classified as 'do_not_touch' "
+                    f"({class_reason})."
+                )
+                self._audit_logger.log_event(
+                    event_type="preview",
+                    action_type=act.action_type,
+                    status="rejected",
+                    allowed=False,
+                    target=resolved_str,
+                    preview_id=preview_id,
+                    reason=reason,
+                )
+                return ActionPreview(
+                    preview_id=preview_id,
+                    action=act,
+                    allowed=False,
+                    rejection_reason=reason,
+                    description=f"Action blocked: {reason}",
+                    requires_confirmation=False,
+                    timestamp=now,
+                )
+
             is_dir = target_path.is_dir()
             if is_dir:
                 try:
@@ -388,12 +536,26 @@ class PolicyLayer:
 
             fingerprint_raw = f"{resolved_str}:{size_bytes}:{mtime_ns}"
             fingerprint = hashlib.sha256(fingerprint_raw.encode("utf-8")).hexdigest()
+            token = generate_confirmation_token(
+                act.action_type, resolved_str, size_bytes, mtime_ns
+            )
 
             item_type = "directory" if is_dir else "file"
-            description = (
-                f"Move {item_type} '{resolved_str}' ({size_bytes:,} bytes, "
-                f"{item_count} items) to the Windows Recycle Bin."
-            )
+            if category == "review_first":
+                requires_extra = True
+                description = (
+                    f"Move {item_type} '{resolved_str}' ({size_bytes:,} bytes, "
+                    f"{item_count} items) to the Windows Recycle Bin. [ATTENTION: "
+                    f"Classified as 'review_first' ({class_reason}); requires explicit "
+                    "extra confirmation.]"
+                )
+            else:
+                requires_extra = False
+                description = (
+                    f"Move {item_type} '{resolved_str}' ({size_bytes:,} bytes, "
+                    f"{item_count} items) to the Windows Recycle Bin."
+                )
+
             changes = (
                 f"Remove {item_type} '{resolved_str}' from active filesystem.",
                 "Send item to Windows Recycle Bin via send2trash.",
@@ -407,12 +569,15 @@ class PolicyLayer:
                 resolved_target_path=resolved_str,
                 description=description,
                 requires_confirmation=True,
+                requires_extra_confirmation=requires_extra,
+                storage_category=category,
                 target_size_bytes=size_bytes,
                 target_item_count=item_count,
                 target_mtime=target_mtime,
                 destination="Windows Recycle Bin",
                 changes=changes,
                 fingerprint=fingerprint,
+                confirmation_token=token,
                 timestamp=now,
             )
             self._audit_logger.log_event(
@@ -426,6 +591,8 @@ class PolicyLayer:
                     "size_bytes": size_bytes,
                     "item_count": item_count,
                     "fingerprint": fingerprint,
+                    "confirmation_token": token,
+                    "storage_category": category,
                 },
             )
             return preview
@@ -514,6 +681,8 @@ class PolicyLayer:
         action: ProposedAction | dict[str, Any],
         preview: ActionPreview | None = None,
         confirmed: bool = False,
+        confirmation_token: str | None = None,
+        extra_confirmed: bool = False,
         hooks: dict[str, Callable[..., Any]] | None = None,
     ) -> ExecutionResult:
         """Execute a permitted action with re-validation and mandatory confirmation."""
@@ -598,7 +767,7 @@ class PolicyLayer:
                     timestamp=now,
                 )
 
-            # 2. Confirmation required
+            # 2. Confirmation required: a bare confirmed=True must not be enough
             if not confirmed:
                 err = "Execution rejected: Explicit user confirmation is required."
                 self._audit_logger.log_event(
@@ -619,7 +788,74 @@ class PolicyLayer:
                     timestamp=now,
                 )
 
-            # 3. Detect changed path between preview and execution
+            if not confirmation_token:
+                err = "Execution rejected: Confirmation token is required."
+                self._audit_logger.log_event(
+                    event_type="execution",
+                    action_type=act.action_type,
+                    status="rejected",
+                    allowed=False,
+                    target=target_name,
+                    preview_id=preview.preview_id,
+                    reason=err,
+                )
+                return ExecutionResult(
+                    success=False,
+                    action_type=act.action_type,
+                    target=target_name,
+                    message="Execution rejected.",
+                    error=err,
+                    timestamp=now,
+                )
+
+            if (
+                preview.confirmation_token
+                and confirmation_token != preview.confirmation_token
+            ):
+                err = "Execution rejected: Invalid or mismatched confirmation token."
+                self._audit_logger.log_event(
+                    event_type="execution",
+                    action_type=act.action_type,
+                    status="rejected",
+                    allowed=False,
+                    target=target_name,
+                    preview_id=preview.preview_id,
+                    reason=err,
+                )
+                return ExecutionResult(
+                    success=False,
+                    action_type=act.action_type,
+                    target=target_name,
+                    message="Execution rejected.",
+                    error=err,
+                    timestamp=now,
+                )
+
+            # 3. Explicit extra confirmation required for review_first paths
+            if preview.requires_extra_confirmation and not extra_confirmed:
+                err = (
+                    "Execution rejected: Path is classified as 'review_first' and "
+                    "requires explicit extra confirmation."
+                )
+                self._audit_logger.log_event(
+                    event_type="execution",
+                    action_type=act.action_type,
+                    status="rejected",
+                    allowed=False,
+                    target=target_name,
+                    preview_id=preview.preview_id,
+                    reason=err,
+                )
+                return ExecutionResult(
+                    success=False,
+                    action_type=act.action_type,
+                    target=target_name,
+                    message="Execution rejected.",
+                    error=err,
+                    timestamp=now,
+                )
+
+            # 4. Detect changed path between preview and execution
             if act.target_path != preview.action.target_path:
                 err = (
                     f"Execution rejected: Target path changed between preview "
@@ -644,7 +880,7 @@ class PolicyLayer:
                     timestamp=now,
                 )
 
-            # 4. Re-check live filesystem target
+            # 5. Re-check live filesystem target
             target_path = Path(live_decision.resolved_path or "")
             if not target_path.exists():
                 err = (
@@ -669,7 +905,82 @@ class PolicyLayer:
                     timestamp=now,
                 )
 
-            # 5. Re-check symlink escapes on live target
+            # Reject reparse points on live target
+            if is_reparse_point(target_path):
+                err = (
+                    "Execution rejected: Target path is a reparse point (junction "
+                    "or symlink), which cannot be targeted for recycling."
+                )
+                self._audit_logger.log_event(
+                    event_type="execution",
+                    action_type=act.action_type,
+                    status="rejected",
+                    allowed=False,
+                    target=str(target_path),
+                    preview_id=preview.preview_id,
+                    reason=err,
+                )
+                return ExecutionResult(
+                    success=False,
+                    action_type=act.action_type,
+                    target=str(target_path),
+                    message="Execution rejected.",
+                    error=err,
+                    timestamp=now,
+                )
+
+            # Re-check storage classification of live target
+            live_cat, live_reason = classify_path_storage(
+                str(target_path),
+                locations=self._locations,
+                extra_protected=self._extra_protected,
+            )
+            if live_cat == "do_not_touch":
+                err = (
+                    f"Execution rejected: Target path is classified as 'do_not_touch' "
+                    f"({live_reason})."
+                )
+                self._audit_logger.log_event(
+                    event_type="execution",
+                    action_type=act.action_type,
+                    status="rejected",
+                    allowed=False,
+                    target=str(target_path),
+                    preview_id=preview.preview_id,
+                    reason=err,
+                )
+                return ExecutionResult(
+                    success=False,
+                    action_type=act.action_type,
+                    target=str(target_path),
+                    message="Execution rejected.",
+                    error=err,
+                    timestamp=now,
+                )
+            if live_cat == "review_first" and not extra_confirmed:
+                err = (
+                    "Execution rejected: Path is classified as 'review_first' and "
+                    "requires explicit extra confirmation."
+                )
+                self._audit_logger.log_event(
+                    event_type="execution",
+                    action_type=act.action_type,
+                    status="rejected",
+                    allowed=False,
+                    target=str(target_path),
+                    preview_id=preview.preview_id,
+                    reason=err,
+                )
+                return ExecutionResult(
+                    success=False,
+                    action_type=act.action_type,
+                    target=str(target_path),
+                    message="Execution rejected.",
+                    error=err,
+                    timestamp=now,
+                )
+
+            # 6. Re-check symlink escapes on live target
             esc, esc_reason = detect_symlink_escape(
                 target_path,
                 locations=self._locations,
@@ -695,7 +1006,7 @@ class PolicyLayer:
                     timestamp=now,
                 )
 
-            # 6. Verify fingerprint (TOCTOU guard)
+            # 7. Verify fingerprint and token (TOCTOU guard)
             is_dir = target_path.is_dir()
             if is_dir:
                 try:
@@ -742,7 +1053,33 @@ class PolicyLayer:
                     timestamp=now,
                 )
 
-            # 7. Execute via send2trash ONLY (never permanent deletion)
+            live_token = generate_confirmation_token(
+                act.action_type, str(target_path), size_bytes, mtime_ns
+            )
+            if live_token != confirmation_token:
+                err = (
+                    "Execution rejected: Target item was modified between preview "
+                    "and execution (token mismatch)."
+                )
+                self._audit_logger.log_event(
+                    event_type="execution",
+                    action_type=act.action_type,
+                    status="rejected",
+                    allowed=False,
+                    target=str(target_path),
+                    preview_id=preview.preview_id,
+                    reason=err,
+                )
+                return ExecutionResult(
+                    success=False,
+                    action_type=act.action_type,
+                    target=str(target_path),
+                    message="Execution rejected.",
+                    error=err,
+                    timestamp=now,
+                )
+
+            # 8. Execute via send2trash ONLY (never permanent deletion)
             trash_func = (
                 hooks.get("send2trash", send2trash.send2trash)
                 if hooks
@@ -791,9 +1128,12 @@ class PolicyLayer:
 
         elif act.action_type == ActionType.OPEN_FILE_LOCATION:
             resolved_str = live_decision.resolved_path or ""
-            open_func = hooks.get("open_file_location") if hooks else None
-            if open_func:
-                open_func(resolved_str)
+            launcher_hook = hooks.get("open_file_location") if hooks else None
+            runner_hook = hooks.get("process_runner") if hooks else None
+            if launcher_hook:
+                launcher_hook(resolved_str)
+            else:
+                launch_file_location(resolved_str, runner=runner_hook)
 
             msg = f"Opened file location for '{resolved_str}'."
             self._audit_logger.log_event(
@@ -915,6 +1255,8 @@ def execute_action(
     action: ProposedAction | dict[str, Any],
     preview: ActionPreview | None = None,
     confirmed: bool = False,
+    confirmation_token: str | None = None,
+    extra_confirmed: bool = False,
     locations: StorageLocations | None = None,
     extra_protected_paths: Sequence[Path | str] | None = None,
     audit_logger: PolicyAuditLogger | None = None,
@@ -927,5 +1269,10 @@ def execute_action(
         audit_logger=audit_logger,
     )
     return layer.execute_action(
-        action, preview=preview, confirmed=confirmed, hooks=hooks
+        action,
+        preview=preview,
+        confirmed=confirmed,
+        confirmation_token=confirmation_token,
+        extra_confirmed=extra_confirmed,
+        hooks=hooks,
     )
