@@ -181,16 +181,16 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 
 ## 2026-10-28 — Reproducible labeled test set and scenarios
 
-- Built a reproducible labeled test suite of 97 synthetic scenarios using only safe, non-malicious synthetic evidence and safe material:
-  - 50 process scenarios: 20 common benign (signed system and vendor binaries evaluating to `low`), 15 benign-but-odd (unsigned developer tools, portable utilities, evaluating to `review`/`inconclusive`), and 15 simulated-suspicious (synthetic lookalike binaries, masqueraded paths, encoded arguments, outbound network activity).
-  - 36 storage scenarios: 12 clearly safe (user temp and application caches), 12 review first (system logs, crash dumps, developer builds), and 12 do-not-touch (Windows system directories, Program Files, user documents).
-  - 6 prompt injection defense scenarios: instruction-like text embedded in evidence fields (`ignore previous instructions`, `SYSTEM OVERRIDE`, closing tag escapes) verifying untrusted datamarking and escape containment.
+- Built a reproducible labeled test suite of 103 synthetic scenarios using only safe, non-malicious synthetic evidence and safe material:
+  - 52 process scenarios: 20 common benign (`benign`), 17 benign-but-odd (`benign_odd`, including unavailable-evidence cases `access_denied` and `value_too_large` evaluating to `inconclusive`), and 15 simulated-suspicious (`suspicious_simulated`). Each carries a label, expected tier, and one-line rationale.
+  - 36 storage scenarios: 12 clearly safe (`safe`), 12 review first (`review`), and 12 do-not-touch (`do-not-touch`), including strictly protected OS and personal document locations that are never classified safe.
+  - 10 prompt injection defense scenarios: instruction-like text embedded in evidence fields (process names, command lines, file paths, user fields) verifying untrusted datamarking containment and verifying that risk tiers derive from rules and evidence rather than injected text.
   - 5 API failure scenarios: provider timeouts, raw malformed non-JSON output, schema mismatches, hallucinated citations, and off-allowlist actions verifying orchestrator repair retry and rules-only fallback.
 - Added 10 handwritten expected-report fixtures with strict grounding and allowlisted actions in `fixtures/reports/` for offline replay by `MockProvider` and UI testing.
 - Added harmless live process decoy (`fixtures/harmless_process_decoy.py`) with bounded duration (≤ 60s), write limits (≤ 10 MiB), zero network/persistence/registry actions, and automatic cleanup.
-- Added comprehensive documentation in `docs/labeling.md` explaining labeling methodology, tier derivations, injection defense, API failure testing, and limitations.
+- Added comprehensive documentation in `docs/labeling.md` detailing labeling methodology, labeler attribution, workstation bias, limitations, and an in-depth findings table analyzing all 12 scenarios where human expectations diverged from deterministic P3 engine derivations.
 - Scenario loaders and models implemented in `src/moonlight/eval/scenarios.py` and exported via `moonlight.eval`.
-- Validation: 485 tests pass across the entire suite, live collection smoke test passes, Ruff lint/format clean repo-wide, and strict mypy passes with 0 errors across 74 source files.
+- Validation: all tests pass across the entire suite, live collection smoke test passes, Ruff lint/format clean repo-wide, and strict mypy passes with 0 errors across all source files.
 
 ## Planned evaluation
 
