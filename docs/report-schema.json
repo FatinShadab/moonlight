@@ -112,6 +112,19 @@
           "title": "Provider",
           "type": "string"
         },
+        "structured_output_mode": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Structured output format mode used ('schema' or 'json').",
+          "title": "Structured Output Mode"
+        },
         "timestamp": {
           "description": "Timezone-aware timestamp when this report was produced.",
           "format": "date-time",

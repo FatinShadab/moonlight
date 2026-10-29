@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import sys
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -94,6 +96,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     investigate_cmd.add_argument(
         "--base-url", help="API base URL (overrides OLLAMA_BASE_URL)"
     )
+    investigate_cmd.add_argument(
+        "--allow-real-evidence",
+        action="store_true",
+        default=False,
+        help="explicitly permit sending non-fixture evidence to a non-meta provider",
+    )
+    investigate_cmd.add_argument(
+        "--allow-custom-host",
+        action="store_true",
+        default=False,
+        help="permit Ollama base URL with host other than ollama.com",
+    )
     policy_val = commands.add_parser(
         "policy-validate", help="validate proposed action against safety policy"
     )
@@ -160,11 +174,26 @@ def main(argv: Sequence[str] | None = None) -> int:
         except Exception as error:
             parser.error(f"invalid or unreadable input evidence: {error}")
 
+        provider_name = (args.provider or os.environ.get("PROVIDER") or "mock").lower()
+        input_path = Path(args.input).resolve()
+        is_fixture = "fixtures" in input_path.parts
+        if provider_name not in ("meta", "mock") and not is_fixture:
+            if not args.allow_real_evidence:
+                parser.error(
+                    "Sending non-fixture or real collected evidence to non-meta "
+                    "provider requires explicit --allow-real-evidence flag"
+                )
+            print(
+                "WARNING: Sending real collected evidence to non-meta provider!",
+                file=sys.stderr,
+            )
+
         cfg = ReasoningConfig(
             provider=args.provider or "mock",
             model=args.model or "mock-model",
             ollama_model=args.model,
             ollama_base_url=args.base_url or "https://ollama.com",
+            allow_custom_host=args.allow_custom_host,
             fixtures_dir=Path(args.fixtures_dir) if args.fixtures_dir else None,
             default_fixture=args.fixture or "default.json",
         )

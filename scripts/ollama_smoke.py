@@ -153,9 +153,11 @@ def main() -> int:
     print(f"\nMaking smoke test investigation call with model: {chosen_model}...")
     bundle = build_sample_bundle()
 
+    allow_custom_host = args.base_url.rstrip("/") != "https://ollama.com"
     provider = OllamaCloudProvider(
         model=chosen_model,
         base_url=args.base_url,
+        allow_custom_host=allow_custom_host,
         api_key=api_key,
     )
 

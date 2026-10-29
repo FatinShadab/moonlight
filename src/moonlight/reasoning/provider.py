@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import time
+import urllib.parse
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
@@ -26,7 +27,8 @@ from moonlight.reasoning.exceptions import (
     ReasoningProviderError,
     UnknownModelError,
 )
-from moonlight.reasoning.models import Report
+from moonlight.reasoning.grounding import validate_grounding
+from moonlight.reasoning.models import REPORT_SCHEMA_VERSION, Report
 from moonlight.reasoning.prompting import (
     PROMPT_VERSION,
     build_investigation_prompt,
@@ -225,10 +227,15 @@ class OllamaCloudProvider:
     Development placeholder only; the final system uses MetaProvider.
     Features:
     - Calls https://ollama.com/api/chat with Bearer auth
-    - Schema-constrained JSON output
-    - Bounded retries with exponential backoff for 429 and timeouts
-    - Segregated response caching keyed by (provider, model, payload_hash, version)
-    - Records provider ('ollama-cloud') and model in Report metadata
+    - Base URL requires HTTPS and defaults to https://ollama.com
+    - Rejects non-ollama.com hosts unless allow_custom_host is explicitly True
+    - Never follows redirects (follow_redirects=False)
+    - Schema JSON output with 1-time fallback to plain JSON on 400 unsupported format
+    - Bounded retries for 429 and timeouts (Retry-After capped at 30s)
+    - Total retry delay strictly bounded by max_total_retry_time
+    - Response cache keyed by (provider, model, hash, prompt_ver, schema, mode)
+    - Re-validates grounding of cached reports on read and discards invalid ones
+    - Records provider ('ollama-cloud'), model, and mode in Report metadata
     - Never logs or exposes API keys
     """
 
@@ -239,9 +246,12 @@ class OllamaCloudProvider:
         timeout: float = 30.0,
         max_retries: int = 2,
         backoff_factor: float = 0.5,
+        max_total_retry_time: float = 60.0,
         format_schema: bool = True,
+        allow_custom_host: bool = False,
         cache: ReasoningCache | None = None,
         prompt_version: str = PROMPT_VERSION,
+        report_schema_version: str = REPORT_SCHEMA_VERSION,
         client: httpx.Client | None = None,
         sleep_fn: Callable[[float], None] = time.sleep,
         api_key: str | None = None,
@@ -251,13 +261,38 @@ class OllamaCloudProvider:
         self.timeout = timeout
         self.max_retries = max_retries
         self.backoff_factor = backoff_factor
+        self.max_total_retry_time = max_total_retry_time
         self.format_schema = format_schema
+        self.allow_custom_host = allow_custom_host
         self.cache = cache or ReasoningCache()
         self.prompt_version = prompt_version
+        self.report_schema_version = report_schema_version
         self._client = client
         self._sleep_fn = sleep_fn
         # The key is read only from environment (or explicit non-logged param)
         self._api_key = api_key
+
+        # Validate base_url: HTTPS required, host ollama.com unless allow_custom_host
+        parsed = urllib.parse.urlparse(self.base_url)
+        if parsed.scheme.lower() != "https":
+            raise ValueError(
+                f"Ollama base URL must use HTTPS scheme (got {self.base_url!r})"
+            )
+        host = (parsed.hostname or "").lower()
+        if host != "ollama.com" and not self.allow_custom_host:
+            raise ValueError(
+                "Ollama base URL host must be 'ollama.com' unless "
+                f"allow_custom_host=True (got {host!r})"
+            )
+
+        # Enforce that client does not follow redirects
+        if self._client is not None and getattr(
+            self._client, "follow_redirects", False
+        ):
+            raise ValueError(
+                "Ollama client must not follow redirects "
+                "(follow_redirects must be False)"
+            )
 
     def __repr__(self) -> str:
         # Never expose the API key in representations
@@ -281,10 +316,11 @@ class OllamaCloudProvider:
             try:
                 seconds = float(response.headers["Retry-After"])
                 if seconds > 0:
-                    return min(seconds, 60.0)
+                    return min(seconds, 30.0)
             except ValueError:
                 pass
-        return float(self.backoff_factor * (2**attempt))
+        backoff = float(self.backoff_factor * (2**attempt))
+        return min(backoff, 30.0)
 
     def investigate(
         self,
@@ -315,32 +351,62 @@ class OllamaCloudProvider:
                 {"role": "user", "content": user_prompt},
             ]
 
-        # Isolated cache key: (provider, model, payload_hash, prompt_version)
         payload_hash = compute_payload_hash(messages)
         self.cache.record_request("ollama-cloud")
 
+        initial_mode = "schema" if self.format_schema else "json"
+
+        # Check cache: must be re-validated by grounding validator on read
         cached_content = self.cache.get(
             provider="ollama-cloud",
             model=self.model,
             payload_hash=payload_hash,
             prompt_version=self.prompt_version,
+            report_schema_version=self.report_schema_version,
+            structured_output_mode=initial_mode,
         )
         if cached_content is not None:
             self.cache.record_hit("ollama-cloud", self.model)
             try:
                 cached_report = Report.model_validate_json(cached_content)
-                return remap_report_citations(cached_report, alias_map)
+                remapped = remap_report_citations(cached_report, alias_map)
+                grounding_res = validate_grounding(remapped, evidence)
+                if not grounding_res.is_valid:
+                    logger.warning(
+                        "Cached report failed grounding validation: %s; "
+                        "discarding cached report",
+                        grounding_res.errors,
+                    )
+                    self.cache.invalidate(
+                        provider="ollama-cloud",
+                        model=self.model,
+                        payload_hash=payload_hash,
+                        prompt_version=self.prompt_version,
+                        report_schema_version=self.report_schema_version,
+                        structured_output_mode=initial_mode,
+                    )
+                else:
+                    return remapped
             except Exception as exc:
                 logger.warning("Cached report validation failed: %s; refetching", exc)
+                self.cache.invalidate(
+                    provider="ollama-cloud",
+                    model=self.model,
+                    payload_hash=payload_hash,
+                    prompt_version=self.prompt_version,
+                    report_schema_version=self.report_schema_version,
+                    structured_output_mode=initial_mode,
+                )
 
         self.cache.record_miss("ollama-cloud", self.model)
 
+        mode_used = initial_mode
         request_body: dict[str, Any] = {
             "model": self.model,
             "messages": messages,
             "stream": False,
         }
-        if self.format_schema:
+        if mode_used == "schema":
             request_body["format"] = Report.model_json_schema()
         else:
             request_body["format"] = "json"
@@ -353,7 +419,27 @@ class OllamaCloudProvider:
 
         response: httpx.Response | None = None
         owns_client = self._client is None
-        client = self._client or httpx.Client(timeout=self.timeout)
+        client = self._client or httpx.Client(
+            timeout=self.timeout, follow_redirects=False
+        )
+
+        total_retry_time: float = 0.0
+
+        def check_and_sleep(
+            sleep_sec: float, exc_on_exceeded: Exception | None = None
+        ) -> None:
+            nonlocal total_retry_time
+            if total_retry_time + sleep_sec > self.max_total_retry_time:
+                if exc_on_exceeded is not None:
+                    raise exc_on_exceeded
+                raise RateLimitError(
+                    f"Total retry delay ({total_retry_time + sleep_sec:.1f}s) "
+                    f"exceeded maximum allowed limit ({self.max_total_retry_time}s)"
+                )
+            total_retry_time += sleep_sec
+            self._sleep_fn(sleep_sec)
+
+        schema_fallback_attempted = False
 
         try:
             for attempt in range(self.max_retries + 1):
@@ -364,6 +450,13 @@ class OllamaCloudProvider:
                         json=request_body,
                         timeout=self.timeout,
                     )
+
+                    # Never follow redirects
+                    if 300 <= response.status_code < 400:
+                        raise ReasoningProviderError(
+                            f"Ollama redirect ({response.status_code}) refused; "
+                            "redirects are disabled."
+                        )
 
                     if response.status_code == 200:
                         break
@@ -384,7 +477,7 @@ class OllamaCloudProvider:
                     if response.status_code == 429:
                         if attempt < self.max_retries:
                             sleep_sec = self._compute_backoff(attempt, response)
-                            self._sleep_fn(sleep_sec)
+                            check_and_sleep(sleep_sec)
                             continue
                         err_msg = _extract_error_message(response)
                         raise RateLimitError(
@@ -392,18 +485,35 @@ class OllamaCloudProvider:
                             f"{self.max_retries} retries: {err_msg}"
                         )
 
-                    if response.status_code == 400 and self.format_schema:
-                        # Fallback to plain JSON format
-                        request_body["format"] = "json"
-                        response = client.post(
-                            endpoint,
-                            headers=headers,
-                            json=request_body,
-                            timeout=self.timeout,
-                        )
-                        if response.status_code == 200:
-                            break
+                    if response.status_code == 400:
                         err_msg = _extract_error_message(response)
+                        # Fall back from schema to JSON mode only once on 400
+                        # when error clearly indicates format is unsupported.
+                        is_unsupported_format = any(
+                            keyword in err_msg.lower()
+                            for keyword in ("format", "schema", "unsupported")
+                        )
+                        if (
+                            mode_used == "schema"
+                            and not schema_fallback_attempted
+                            and is_unsupported_format
+                        ):
+                            schema_fallback_attempted = True
+                            mode_used = "json"
+                            request_body["format"] = "json"
+                            logger.info(
+                                "Falling back from schema to JSON mode after 400: %s",
+                                err_msg,
+                            )
+                            response = client.post(
+                                endpoint,
+                                headers=headers,
+                                json=request_body,
+                                timeout=self.timeout,
+                            )
+                            if response.status_code == 200:
+                                break
+                            err_msg = _extract_error_message(response)
                         raise ReasoningProviderError(
                             f"Ollama request error (400): {err_msg}"
                         )
@@ -411,7 +521,7 @@ class OllamaCloudProvider:
                     if response.status_code >= 500:
                         if attempt < self.max_retries:
                             sleep_sec = self._compute_backoff(attempt, response)
-                            self._sleep_fn(sleep_sec)
+                            check_and_sleep(sleep_sec)
                             continue
                         err_msg = _extract_error_message(response)
                         raise ReasoningProviderError(
@@ -427,7 +537,12 @@ class OllamaCloudProvider:
                 except httpx.TimeoutException as exc:
                     if attempt < self.max_retries:
                         sleep_sec = self._compute_backoff(attempt)
-                        self._sleep_fn(sleep_sec)
+                        timeout_err = ProviderTimeoutError(
+                            "Ollama request timed out; total retry time "
+                            f"({total_retry_time + sleep_sec:.1f}s) exceeded limit: "
+                            f"{exc}"
+                        )
+                        check_and_sleep(sleep_sec, exc_on_exceeded=timeout_err)
                         continue
                     raise ProviderTimeoutError(
                         f"Ollama request timed out after {self.timeout}s and "
@@ -444,7 +559,12 @@ class OllamaCloudProvider:
                 except httpx.RequestError as exc:
                     if attempt < self.max_retries:
                         sleep_sec = self._compute_backoff(attempt)
-                        self._sleep_fn(sleep_sec)
+                        net_err = ReasoningProviderError(
+                            "Network error contacting Ollama; total retry time "
+                            f"({total_retry_time + sleep_sec:.1f}s) exceeded limit: "
+                            f"{exc}"
+                        )
+                        check_and_sleep(sleep_sec, exc_on_exceeded=net_err)
                         continue
                     raise ReasoningProviderError(
                         f"Network error contacting Ollama: {exc}"
@@ -489,12 +609,13 @@ class OllamaCloudProvider:
         if not isinstance(report_dict, dict):
             raise MalformedOutputError("Model report content must be a JSON object")
 
-        # Ensure metadata records provider and model
+        # Ensure metadata records provider, model, and structured_output_mode
         metadata_dict = report_dict.get("metadata")
         if not isinstance(metadata_dict, dict):
             metadata_dict = {}
         metadata_dict["provider"] = "ollama-cloud"
         metadata_dict["model"] = self.model
+        metadata_dict["structured_output_mode"] = mode_used
         if "prompt_version" not in metadata_dict:
             metadata_dict["prompt_version"] = self.prompt_version
         if "timestamp" not in metadata_dict:
@@ -510,13 +631,15 @@ class OllamaCloudProvider:
 
         remapped = remap_report_citations(report, alias_map)
 
-        # Store in provider-segregated cache
+        # Store in provider-segregated cache with schema version and output mode
         self.cache.set(
             provider="ollama-cloud",
             model=self.model,
             payload_hash=payload_hash,
             prompt_version=self.prompt_version,
             response_text=remapped.model_dump_json(),
+            report_schema_version=self.report_schema_version,
+            structured_output_mode=mode_used,
         )
 
         return remapped
@@ -592,6 +715,15 @@ class ReasoningConfig(BaseModel):
         default=PROMPT_VERSION,
         description="Semantic version of prompt templates.",
     )
+    allow_custom_host: bool = Field(
+        default=False,
+        description="Allow Ollama base URLs with hosts other than ollama.com.",
+    )
+    max_total_retry_time: float = Field(
+        default=60.0,
+        ge=0.0,
+        description="Maximum cumulative retry delay in seconds.",
+    )
 
 
 def get_provider(
@@ -643,12 +775,22 @@ def get_provider(
                 enabled=config.enable_cache if config else True,
             )
         )
+        allow_custom_host = bool(
+            kwargs.get("allow_custom_host")
+            or (config.allow_custom_host if config else False)
+        )
+        max_total_retry_time = float(
+            kwargs.get("max_total_retry_time")
+            or (config.max_total_retry_time if config else 60.0)
+        )
         return OllamaCloudProvider(
             model=model,
             base_url=base_url,
             timeout=config.timeout if config else 30.0,
             max_retries=config.max_retries if config else 2,
             backoff_factor=config.backoff_factor if config else 0.5,
+            max_total_retry_time=max_total_retry_time,
+            allow_custom_host=allow_custom_host,
             cache=cache,
             prompt_version=config.prompt_version if config else PROMPT_VERSION,
             client=kwargs.get("client"),

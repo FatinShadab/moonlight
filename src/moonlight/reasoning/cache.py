@@ -1,6 +1,8 @@
 """Isolated caching and request counting for reasoning providers.
 
-Responses are strictly keyed by (provider, model, payload_hash, prompt_version).
+Responses are strictly keyed by:
+(provider, model, payload_hash, prompt_version,
+ report_schema_version, structured_output_mode).
 Cache storage is segregated per provider and never mixed.
 API keys and secrets are never stored in cache entries or logs.
 """
@@ -14,6 +16,8 @@ import re
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
+
+from moonlight.reasoning.models import REPORT_SCHEMA_VERSION
 
 logger = logging.getLogger(__name__)
 
@@ -51,9 +55,10 @@ class ReasoningCache:
         self.cache_dir = Path(cache_dir).resolve() if cache_dir else None
         self.enabled = enabled
 
-        # Partitioned store: {provider: {(model, hash, ver): response_text}}
-        self._memory_cache: dict[str, dict[tuple[str, str, str], str]] = defaultdict(
-            dict
+        # Partitioned store:
+        # {provider: {(model, hash, ver, schema_ver, mode): response_text}}
+        self._memory_cache: dict[str, dict[tuple[str, str, str, str, str], str]] = (
+            defaultdict(dict)
         )
 
         # Metrics per provider
@@ -107,16 +112,27 @@ class ReasoningCache:
         }
 
     def _file_path(
-        self, provider: str, model: str, payload_hash: str, prompt_version: str
+        self,
+        provider: str,
+        model: str,
+        payload_hash: str,
+        prompt_version: str,
+        report_schema_version: str,
+        structured_output_mode: str,
     ) -> Path | None:
         if not self.cache_dir:
             return None
         safe_prov = _sanitize_filename_part(provider)
         safe_mod = _sanitize_filename_part(model)
         safe_ver = _sanitize_filename_part(prompt_version)
+        safe_schema = _sanitize_filename_part(report_schema_version)
+        safe_mode = _sanitize_filename_part(structured_output_mode)
         # Dedicated subdirectory per provider ensures strict partition
         provider_dir = self.cache_dir / safe_prov
-        return provider_dir / f"{safe_mod}__{safe_ver}__{payload_hash}.json"
+        return (
+            provider_dir
+            / f"{safe_mod}__{safe_ver}__{safe_schema}__{safe_mode}__{payload_hash}.json"
+        )
 
     def get(
         self,
@@ -124,6 +140,8 @@ class ReasoningCache:
         model: str,
         payload_hash: str,
         prompt_version: str,
+        report_schema_version: str = REPORT_SCHEMA_VERSION,
+        structured_output_mode: str = "schema",
     ) -> str | None:
         """Retrieve a cached response if present.
 
@@ -133,12 +151,25 @@ class ReasoningCache:
             return None
 
         # Check memory cache first
-        key = (model, payload_hash, prompt_version)
+        key = (
+            model,
+            payload_hash,
+            prompt_version,
+            report_schema_version,
+            structured_output_mode,
+        )
         if key in self._memory_cache[provider]:
             return self._memory_cache[provider][key]
 
         # Check disk cache
-        path = self._file_path(provider, model, payload_hash, prompt_version)
+        path = self._file_path(
+            provider,
+            model,
+            payload_hash,
+            prompt_version,
+            report_schema_version,
+            structured_output_mode,
+        )
         if path and path.is_file():
             try:
                 content = path.read_text(encoding="utf-8")
@@ -156,21 +187,68 @@ class ReasoningCache:
         payload_hash: str,
         prompt_version: str,
         response_text: str,
+        report_schema_version: str = REPORT_SCHEMA_VERSION,
+        structured_output_mode: str = "schema",
     ) -> None:
         """Store a response in the provider's isolated cache."""
         if not self.enabled:
             return
 
-        key = (model, payload_hash, prompt_version)
+        key = (
+            model,
+            payload_hash,
+            prompt_version,
+            report_schema_version,
+            structured_output_mode,
+        )
         self._memory_cache[provider][key] = response_text
 
-        path = self._file_path(provider, model, payload_hash, prompt_version)
+        path = self._file_path(
+            provider,
+            model,
+            payload_hash,
+            prompt_version,
+            report_schema_version,
+            structured_output_mode,
+        )
         if path:
             try:
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(response_text, encoding="utf-8")
             except OSError as err:
                 logger.warning("Failed to write cache file %s: %s", path, err)
+
+    def invalidate(
+        self,
+        provider: str,
+        model: str,
+        payload_hash: str,
+        prompt_version: str,
+        report_schema_version: str = REPORT_SCHEMA_VERSION,
+        structured_output_mode: str = "schema",
+    ) -> None:
+        """Remove a single cached entry from memory and disk."""
+        key = (
+            model,
+            payload_hash,
+            prompt_version,
+            report_schema_version,
+            structured_output_mode,
+        )
+        self._memory_cache[provider].pop(key, None)
+        path = self._file_path(
+            provider,
+            model,
+            payload_hash,
+            prompt_version,
+            report_schema_version,
+            structured_output_mode,
+        )
+        if path and path.is_file():
+            try:
+                path.unlink(missing_ok=True)
+            except OSError as err:
+                logger.warning("Failed to delete cache file %s: %s", path, err)
 
     def clear(self, provider: str | None = None) -> None:
         """Clear cache entries in-memory and on disk."""

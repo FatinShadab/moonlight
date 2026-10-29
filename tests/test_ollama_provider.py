@@ -38,6 +38,7 @@ from moonlight.reasoning.exceptions import (
     MissingApiKeyError,
     ProviderTimeoutError,
     RateLimitError,
+    ReasoningProviderError,
     UnknownModelError,
 )
 from moonlight.reasoning.models import (
@@ -671,16 +672,62 @@ def test_cli_investigate_switching_providers(
     bundle_file = tmp_path / "bundle.json"
     bundle_file.write_text(bundle.model_dump_json(indent=2), encoding="utf-8")
 
-    # CLI with mock provider
+    # CLI with mock provider works without --allow-real-evidence
     exit_mock = main(["investigate", "--input", str(bundle_file), "--provider", "mock"])
     assert exit_mock == 0
     captured_mock = capsys.readouterr()
     rep_mock = json.loads(captured_mock.out)
     assert rep_mock["risk_tier"] in ("low", "review", "high", "inconclusive")
 
-    # CLI with ollama-cloud without key falls back gracefully to rules-only report
+    # CLI with ollama-cloud without --allow-real-evidence on non-fixture raises error
     monkeypatch.delenv("OLLAMA_API_KEY", raising=False)
+    with pytest.raises(SystemExit) as exc_info:
+        main(
+            [
+                "investigate",
+                "--input",
+                str(bundle_file),
+                "--provider",
+                "ollama-cloud",
+                "--model",
+                "test-model",
+            ]
+        )
+    assert exc_info.value.code == 2
+
+    # CLI with ollama-cloud WITH --allow-real-evidence succeeds with warning
     exit_ollama = main(
+        [
+            "investigate",
+            "--input",
+            str(bundle_file),
+            "--provider",
+            "ollama-cloud",
+            "--model",
+            "test-model",
+            "--allow-real-evidence",
+        ]
+    )
+    assert exit_ollama == 0
+    captured_ollama = capsys.readouterr()
+    assert "WARNING: Sending real collected evidence" in captured_ollama.err
+    rep_ollama = json.loads(captured_ollama.out)
+    assert rep_ollama["is_fallback"] is True
+    assert rep_ollama["metadata"]["provider"] == "rules_only_fallback"
+
+
+def test_cli_investigate_fixture_allows_non_meta_without_flag(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # If path contains 'fixtures', --allow-real-evidence is not required
+    fixtures_dir = tmp_path / "fixtures" / "scenarios"
+    fixtures_dir.mkdir(parents=True)
+    bundle_file = fixtures_dir / "test_fixture.json"
+    bundle = make_test_bundle()
+    bundle_file.write_text(bundle.model_dump_json(indent=2), encoding="utf-8")
+
+    monkeypatch.delenv("OLLAMA_API_KEY", raising=False)
+    exit_code = main(
         [
             "investigate",
             "--input",
@@ -691,8 +738,250 @@ def test_cli_investigate_switching_providers(
             "test-model",
         ]
     )
-    assert exit_ollama == 0
-    captured_ollama = capsys.readouterr()
-    rep_ollama = json.loads(captured_ollama.out)
-    assert rep_ollama["is_fallback"] is True
-    assert rep_ollama["metadata"]["provider"] == "rules_only_fallback"
+    assert exit_code == 0
+    captured = capsys.readouterr()
+    rep = json.loads(captured.out)
+    assert rep["is_fallback"] is True
+
+
+# ---------------------------------------------------------------------------
+# Test 11: Base URL security (HTTPS required, custom host refusal, redirects)
+# ---------------------------------------------------------------------------
+
+
+def test_ollama_base_url_requires_https() -> None:
+    with pytest.raises(ValueError, match="must use HTTPS"):
+        OllamaCloudProvider(
+            model="test-model",
+            base_url="http://ollama.com",
+            api_key="secret",
+        )
+
+
+def test_ollama_base_url_refuses_custom_host() -> None:
+    with pytest.raises(ValueError, match="host must be 'ollama.com'"):
+        OllamaCloudProvider(
+            model="test-model",
+            base_url="https://attacker.example.com",
+            api_key="secret",
+        )
+
+    # Allowed when allow_custom_host=True
+    prov = OllamaCloudProvider(
+        model="test-model",
+        base_url="https://custom.internal.net",
+        allow_custom_host=True,
+        api_key="secret",
+    )
+    assert prov.base_url == "https://custom.internal.net"
+
+
+def test_ollama_refuses_follow_redirects_client() -> None:
+    client = httpx.Client(follow_redirects=True)
+    with pytest.raises(ValueError, match="must not follow redirects"):
+        OllamaCloudProvider(
+            model="test-model",
+            client=client,
+            api_key="secret",
+        )
+
+
+def test_ollama_refuses_redirect_response() -> None:
+    bundle = make_test_bundle()
+
+    def mock_handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(301, headers={"Location": "https://other.com"})
+
+    transport = httpx.MockTransport(mock_handler)
+    client = httpx.Client(transport=transport, follow_redirects=False)
+
+    provider = OllamaCloudProvider(
+        model="test-model",
+        api_key="secret",
+        client=client,
+    )
+    with pytest.raises(ReasoningProviderError, match="redirect .* refused"):
+        provider.investigate(bundle)
+
+
+# ---------------------------------------------------------------------------
+# Test 12: Backoff Capping and Bounded Total Retry Time
+# ---------------------------------------------------------------------------
+
+
+def test_ollama_retry_after_capped_at_30s() -> None:
+    provider = OllamaCloudProvider(model="test-model", api_key="secret")
+    resp = httpx.Response(429, headers={"Retry-After": "120"})
+    delay = provider._compute_backoff(0, resp)
+    assert delay == 30.0
+
+
+def test_ollama_total_retry_time_bounded() -> None:
+    bundle = make_test_bundle()
+    sleeps: list[float] = []
+
+    def mock_handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(429, headers={"Retry-After": "25"})
+
+    transport = httpx.MockTransport(mock_handler)
+    client = httpx.Client(transport=transport, follow_redirects=False)
+
+    provider = OllamaCloudProvider(
+        model="test-model",
+        api_key="secret",
+        client=client,
+        max_retries=3,
+        max_total_retry_time=40.0,
+        sleep_fn=sleeps.append,
+    )
+    # Attempt 0: delay 25s, total 25s <= 40s (sleeps)
+    # Attempt 1: delay 25s, total 50s > 40s -> raises RateLimitError
+    with pytest.raises(RateLimitError, match="exceeded maximum allowed limit"):
+        provider.investigate(bundle)
+    assert sleeps == [25.0]
+
+
+# ---------------------------------------------------------------------------
+# Test 13: 400 Fallback Only on Unsupported Format & Mode in Metadata
+# ---------------------------------------------------------------------------
+
+
+def test_ollama_400_non_format_error_raises_immediately() -> None:
+    bundle = make_test_bundle()
+    calls = 0
+
+    def mock_handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(
+            400, json={"error": "invalid parameter: temperature out of range"}
+        )
+
+    transport = httpx.MockTransport(mock_handler)
+    client = httpx.Client(transport=transport, follow_redirects=False)
+
+    provider = OllamaCloudProvider(
+        model="test-model",
+        api_key="secret",
+        client=client,
+    )
+    with pytest.raises(ReasoningProviderError, match="invalid parameter"):
+        provider.investigate(bundle)
+    assert calls == 1  # Did NOT attempt fallback
+
+
+def test_ollama_400_format_unsupported_records_mode_in_metadata() -> None:
+    bundle = make_test_bundle()
+    calls = 0
+    valid_report = sample_valid_report_dict(bundle)
+
+    def mock_handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        body = json.loads(request.read())
+        if calls == 1:
+            assert isinstance(body["format"], dict)
+            return httpx.Response(
+                400, json={"error": "format schema unsupported by this model"}
+            )
+        assert body["format"] == "json"
+        return httpx.Response(
+            200,
+            json={
+                "message": {"role": "assistant", "content": json.dumps(valid_report)}
+            },
+        )
+
+    transport = httpx.MockTransport(mock_handler)
+    client = httpx.Client(transport=transport, follow_redirects=False)
+
+    provider = OllamaCloudProvider(
+        model="test-model",
+        api_key="secret",
+        client=client,
+    )
+    rep = provider.investigate(bundle)
+    assert calls == 2
+    assert rep.metadata.structured_output_mode == "json"
+
+
+def test_ollama_schema_mode_records_schema_in_metadata() -> None:
+    bundle = make_test_bundle()
+    valid_report = sample_valid_report_dict(bundle)
+
+    def mock_handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "message": {"role": "assistant", "content": json.dumps(valid_report)}
+            },
+        )
+
+    transport = httpx.MockTransport(mock_handler)
+    client = httpx.Client(transport=transport, follow_redirects=False)
+
+    provider = OllamaCloudProvider(
+        model="test-model",
+        api_key="secret",
+        client=client,
+    )
+    rep = provider.investigate(bundle)
+    assert rep.metadata.structured_output_mode == "schema"
+
+
+# ---------------------------------------------------------------------------
+# Test 14: Cache Re-validates Grounding on Read and Discards Invalid
+# ---------------------------------------------------------------------------
+
+
+def test_cached_report_revalidated_by_grounding_validator(tmp_path: Path) -> None:
+    bundle = make_test_bundle()
+    cache = ReasoningCache(cache_dir=tmp_path)
+    valid_report = sample_valid_report_dict(bundle)
+
+    # Put an invalid report in cache citing a phantom evidence ID
+    invalid_report = sample_valid_report_dict(bundle)
+    invalid_report["observed_facts"][0]["evidence_ids"] = ["E999_PHANTOM"]
+
+    # Use a real provider call that populates cache, then corrupt it
+    calls = 0
+
+    def mock_handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(
+            200,
+            json={
+                "message": {"role": "assistant", "content": json.dumps(valid_report)}
+            },
+        )
+
+    transport = httpx.MockTransport(mock_handler)
+    client = httpx.Client(transport=transport, follow_redirects=False)
+
+    provider = OllamaCloudProvider(
+        model="test-model",
+        api_key="secret",
+        client=client,
+        cache=cache,
+    )
+
+    # Initial call succeeds and populates cache
+    rep1 = provider.investigate(bundle)
+    assert calls == 1
+    assert rep1.observed_facts[0].evidence_ids != ("E999_PHANTOM",)
+
+    # Manually corrupt the cache entry on disk to cite a phantom evidence ID
+    cached_files = list(tmp_path.rglob("*.json"))
+    assert len(cached_files) == 1
+    corrupted_data = json.loads(cached_files[0].read_text(encoding="utf-8"))
+    corrupted_data["observed_facts"][0]["evidence_ids"] = ["ev-process-nonexistent-id"]
+    cached_files[0].write_text(json.dumps(corrupted_data), encoding="utf-8")
+    # Also clear in-memory cache so it must read from disk
+    cache._memory_cache.clear()
+
+    # Second call reads from disk, fails grounding re-validation, invalidates cache,
+    # and calls the API to refetch
+    rep2 = provider.investigate(bundle)
+    assert calls == 2  # Refetched because cache entry was discarded!
+    assert rep2.is_fallback is False

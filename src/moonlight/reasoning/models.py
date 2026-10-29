@@ -17,6 +17,7 @@ from pydantic import (
 
 RiskTier = Literal["low", "review", "high", "inconclusive"]
 Likelihood = Literal["low", "medium", "high"] | str
+REPORT_SCHEMA_VERSION = "1.0.0"
 
 
 class ObservedFact(BaseModel):
@@ -93,6 +94,10 @@ class ReportMetadata(BaseModel):
     )
     timestamp: AwareDatetime = Field(
         description="Timezone-aware timestamp when this report was produced.",
+    )
+    structured_output_mode: str | None = Field(
+        default=None,
+        description="Structured output format mode used ('schema' or 'json').",
     )
 
 
