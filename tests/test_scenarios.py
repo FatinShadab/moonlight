@@ -3,7 +3,7 @@
 Verifies:
 - 40-60 process scenarios with expected risk tiers and schema validity
 - 30-40 storage scenarios with clearly_safe / review_first / do_not_touch categories
-- Injection scenarios with instruction text safely datamarked
+- 8-10 injection scenarios with instruction text safely datamarked
 - API failure scenarios verifying orchestrator fallback
 - Handwritten expected-report fixtures with strict grounding citations
 - Global uniqueness of scenario IDs
@@ -38,6 +38,24 @@ from moonlight.storage.models import SelectedRoot, StorageReport
 
 _ID_REGEX = re.compile(_ID_PATTERN)
 
+# Documented findings in docs/labeling.md where human labeler expectations
+# diverged from the deterministic P3 engine derivations. As required by DO 6,
+# these are tracked as explicit findings rather than silently changed.
+KNOWN_ENGINE_DISAGREEMENTS: dict[str, str] = {
+    "proc_csrss_in_desktop": "review",
+    "proc_encoded_cmd_exec": "low",
+    "proc_encoded_powershell": "low",
+    "proc_heavy_temp_writer": "review",
+    "proc_lsass_bad_parent": "low",
+    "proc_lsass_lookalike": "low",
+    "proc_multi_anomalies_high": "review",
+    "proc_process_missing_evidence": "low",
+    "proc_services_lookalike": "low",
+    "proc_svchost_bad_parent": "low",
+    "proc_svchost_lookalike": "low",
+    "proc_unsigned_user_outbound": "review",
+}
+
 
 def test_process_scenarios_count_and_schema() -> None:
     scenarios = load_process_scenarios()
@@ -49,13 +67,18 @@ def test_process_scenarios_count_and_schema() -> None:
     categories = {s.category for s in scenarios}
     assert categories == {"common_benign", "benign_but_odd", "simulated_suspicious"}
 
+    labels = {s.label for s in scenarios}
+    assert labels == {"benign", "benign_odd", "suspicious_simulated"}
+
     tiers = {s.expected_tier for s in scenarios}
-    assert {"low", "review", "high"}.issubset(tiers)
+    assert {"low", "review", "high", "inconclusive"}.issubset(tiers)
 
     for sc in scenarios:
         assert isinstance(sc, ProcessScenario)
         assert sc.id.startswith("proc_")
         assert sc.description
+        assert sc.rationale
+        assert sc.label in ("benign", "benign_odd", "suspicious_simulated")
 
         # Verify bundle schema compliance
         bundle = sc.bundle
@@ -80,6 +103,19 @@ def test_process_scenarios_count_and_schema() -> None:
                 f"({rule_report.derivation})"
             )
 
+        # Verify expected tier vs actual P3 engine output
+        if sc.id in KNOWN_ENGINE_DISAGREEMENTS:
+            expected_p3 = KNOWN_ENGINE_DISAGREEMENTS[sc.id]
+            assert rule_report.tier == expected_p3, (
+                f"{sc.id} documented finding mismatch: expected {expected_p3}, "
+                f"got {rule_report.tier}"
+            )
+        else:
+            assert rule_report.tier == sc.expected_tier, (
+                f"{sc.id} tier mismatch: expected {sc.expected_tier}, "
+                f"got {rule_report.tier} ({rule_report.derivation})"
+            )
+
 
 def test_storage_scenarios_count_and_schema() -> None:
     scenarios = load_storage_scenarios()
@@ -91,6 +127,9 @@ def test_storage_scenarios_count_and_schema() -> None:
     categories = {s.category for s in scenarios}
     assert categories == {"clearly_safe", "review_first", "do_not_touch"}
 
+    labels = {s.label for s in scenarios}
+    assert labels == {"safe", "review", "do-not-touch"}
+
     safe_paths = tuple(s.target_path for s in scenarios if s.category == "clearly_safe")
     locations = StorageLocations(protected=(), safe=safe_paths)
 
@@ -98,6 +137,8 @@ def test_storage_scenarios_count_and_schema() -> None:
         assert isinstance(sc, StorageScenario)
         assert sc.id.startswith("store_")
         assert sc.target_path
+        assert sc.rationale
+        assert sc.label in ("safe", "review", "do-not-touch")
 
         # Verify bundle schema compliance
         bundle = sc.bundle
@@ -124,16 +165,24 @@ def test_storage_scenarios_count_and_schema() -> None:
             f"{sc.category}, got {actual_category}"
         )
 
+        # DO 2: a do-not-touch path that must never be classified safe
+        if sc.category == "do_not_touch":
+            assert actual_category != "clearly_safe", (
+                f"Protected path {sc.target_path} was illegally classified safe"
+            )
+
 
 def test_injection_scenarios_defense() -> None:
     scenarios = load_injection_scenarios()
-    assert len(scenarios) >= 5, (
-        f"Expected at least 5 injection scenarios, got {len(scenarios)}"
+    # DO 3: 8-10 injection scenarios
+    assert 8 <= len(scenarios) <= 10, (
+        f"Expected 8-10 injection scenarios, got {len(scenarios)}"
     )
 
     for sc in scenarios:
         assert sc.is_injection is True
         assert sc.injection_text
+        assert sc.expected_behavior
         assert isinstance(sc.bundle, EvidenceBundle)
 
         # Build investigation prompt and ensure injection is inside untrusted block
@@ -147,7 +196,6 @@ def test_injection_scenarios_defense() -> None:
 
         data_block = user_prompt[start_idx:end_idx]
 
-        # The injection text or key tokens must be contained in the untrusted block
         escaped_injection = sc.injection_text.replace('"', '\\"').replace(
             "\r\n", "\\r\\n"
         )
@@ -156,6 +204,8 @@ def test_injection_scenarios_defense() -> None:
             or escaped_injection in data_block
             or all(token in data_block for token in ("ignore", "instructions"))
             or all(token in data_block for token in ("SYSTEM", "OVERRIDE"))
+            or all(token in data_block for token in ("Disregard", "policy"))
+            or all(token in data_block for token in ("safeguards", "mark_safe"))
         ), f"Injection text missing from data block in scenario {sc.id}"
 
         # The trusted instructions following the data block must not be tainted
@@ -167,8 +217,9 @@ def test_injection_scenarios_defense() -> None:
 
 def test_api_failure_scenarios_fallback() -> None:
     scenarios = load_api_failure_scenarios()
-    assert len(scenarios) >= 4, (
-        f"Expected at least 4 API failure scenarios, got {len(scenarios)}"
+    # DO 4: 4-5 API-failure scenarios
+    assert 4 <= len(scenarios) <= 5, (
+        f"Expected 4-5 API failure scenarios, got {len(scenarios)}"
     )
 
     for sc in scenarios:
@@ -208,6 +259,7 @@ def test_api_failure_scenarios_fallback() -> None:
 
 def test_handwritten_expected_reports_grounding() -> None:
     reports = load_expected_reports()
+    # DO 5: Handwritten expected-report fixtures for about 10 scenarios
     assert len(reports) >= 10, (
         f"Expected at least 10 handwritten reports, got {len(reports)}"
     )
