@@ -1,7 +1,17 @@
-"""Schema-validated report reasoning and offline scaffold for Moonlight."""
+"""Schema-validated report reasoning and provider implementations for Moonlight."""
 
 from __future__ import annotations
 
+from moonlight.reasoning.cache import ReasoningCache, compute_payload_hash
+from moonlight.reasoning.exceptions import (
+    InvalidApiKeyError,
+    MalformedOutputError,
+    MissingApiKeyError,
+    ProviderTimeoutError,
+    RateLimitError,
+    ReasoningProviderError,
+    UnknownModelError,
+)
 from moonlight.reasoning.fallback import build_rules_fallback_report
 from moonlight.reasoning.grounding import (
     EmptyCitationError,
@@ -47,24 +57,33 @@ __all__ = [
     "GroundingError",
     "GroundingValidationResult",
     "Hypothesis",
+    "InvalidApiKeyError",
     "Likelihood",
+    "MalformedOutputError",
     "MetaProvider",
+    "MissingApiKeyError",
     "MockProvider",
     "ObservedFact",
     "OffAllowlistActionError",
     "OllamaCloudProvider",
+    "ProviderTimeoutError",
     "ProviderType",
+    "RateLimitError",
+    "ReasoningCache",
     "ReasoningConfig",
     "ReasoningOrchestrator",
+    "ReasoningProviderError",
     "RecommendedAction",
     "Report",
     "ReportMetadata",
     "ReportProvider",
     "RiskTier",
     "UngroundedCitationError",
+    "UnknownModelError",
     "build_investigation_prompt",
     "build_repair_prompt",
     "build_rules_fallback_report",
+    "compute_payload_hash",
     "extract_known_evidence_ids",
     "format_untrusted_evidence_block",
     "get_provider",

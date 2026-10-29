@@ -1,7 +1,8 @@
-"""Evaluation helpers, benchmarks, and labeled scenarios."""
+"""Evaluation helpers, benchmarks, metrics, and labeled scenarios."""
 
 from __future__ import annotations
 
+from moonlight.eval.models import EvaluationResult
 from moonlight.eval.scenarios import (
     ApiFailureScenario,
     ProcessCategory,
@@ -20,6 +21,7 @@ from moonlight.eval.scenarios import (
 
 __all__ = [
     "ApiFailureScenario",
+    "EvaluationResult",
     "ProcessCategory",
     "ProcessScenario",
     "ProcessTier",

@@ -1,7 +1,10 @@
 # AI Investigation Report & Reasoning Layer (Offline Scaffold)
 
 Moonlight's reasoning layer produces structured, schema-validated investigation reports from privacy-minimized evidence bundles. In accordance with safety rules, the reasoning pipeline operates with strict local-first safety:
-1. **Zero Network Calls in Offline Mode**: Providers that require live network access (`MetaProvider` and `OllamaCloudProvider`) are offline placeholders raising `NotImplementedError`. The offline pipeline runs with `MockProvider`.
+1. **Providers**:
+   - `MockProvider`: Offline mock replaying reports from fixtures for fast deterministic tests.
+   - `OllamaCloudProvider`: Temporary development placeholder calling `https://ollama.com/api/chat` with Bearer auth, schema-constrained output, bounded backoff retries, isolated caching, and UI badge.
+   - `MetaProvider`: Target production provider for the final system (offline placeholder until integration).
 2. **Untrusted Evidence Datamarking**: All process names, command lines, file names, and evidence attributes are treated as untrusted input. Evidence items are wrapped in `<UNTRUSTED_EVIDENCE_DATA_START>` data blocks with explicit directives instructing the model never to execute instructions inside evidence.
 3. **Short Alias Mapping (E1, E2)**: Evidence items are assigned short aliases in prompt representations, which are mapped back to stable deterministic evidence IDs (`ev-process-...`) to minimize token overhead and prevent hallucinated ID syntax.
 4. **Grounding Validation**: Every factual claim and recommendation must cite valid evidence IDs present in the input bundle. Empty observed fact citations and ungrounded IDs are structurally rejected.
@@ -60,6 +63,9 @@ Run investigation reasoning from the CLI:
 ```bash
 # Run investigation using the offline mock provider:
 moonlight investigate --input "C:/MoonlightData/bundle.json" --provider mock
+
+# Run investigation using the temporary Ollama Cloud development placeholder:
+moonlight investigate --input "C:/MoonlightData/bundle.json" --provider ollama-cloud --model "gemma4:31b"
 
 # Test offline fallback with MetaProvider placeholder:
 moonlight investigate --input "C:/MoonlightData/bundle.json" --provider meta
