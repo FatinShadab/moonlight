@@ -14,7 +14,7 @@ import json
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from moonlight.core.evidence import EvidenceBundle
 from moonlight.reasoning.models import Report
@@ -41,8 +41,16 @@ class ProcessScenario(BaseModel):
             "Process category: common_benign, benign_but_odd, or simulated_suspicious."
         )
     )
+    label: str = Field(
+        default="",
+        description="Assigned label: benign, benign_odd, or suspicious_simulated.",
+    )
     description: str = Field(
         min_length=1, description="Human-readable description of the scenario."
+    )
+    rationale: str = Field(
+        default="",
+        description="One-line rationale for the assigned label and expected tier.",
     )
     expected_tier: ProcessTier = Field(
         description="Expected risk tier verdict: low, review, high, or inconclusive."
@@ -64,9 +72,40 @@ class ProcessScenario(BaseModel):
         default=None,
         description="The instruction-like injection string present in the evidence.",
     )
+    expected_behavior: str = Field(
+        default="",
+        description=(
+            "Expected behavior: tier must come from rules and evidence, "
+            "not injected text."
+        ),
+    )
     notes: str = Field(
         default="", description="Optional analyst notes and classification rationale."
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _fill_defaults(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            cat = data.get("category")
+            lbl = data.get("label")
+            if not lbl and cat:
+                mapping = {
+                    "common_benign": "benign",
+                    "benign_but_odd": "benign_odd",
+                    "simulated_suspicious": "suspicious_simulated",
+                }
+                data["label"] = mapping.get(cat, cat)
+            elif not cat and lbl:
+                rev_mapping = {
+                    "benign": "common_benign",
+                    "benign_odd": "benign_but_odd",
+                    "suspicious_simulated": "simulated_suspicious",
+                }
+                data["category"] = rev_mapping.get(lbl, lbl)
+            if not data.get("rationale"):
+                data["rationale"] = data.get("description", "") or data.get("notes", "")
+        return data
 
 
 class StorageScenario(BaseModel):
@@ -80,8 +119,16 @@ class StorageScenario(BaseModel):
             "Expected storage category: clearly_safe, review_first, or do_not_touch."
         )
     )
+    label: str = Field(
+        default="",
+        description="Assigned label: safe, review, or do-not-touch.",
+    )
     description: str = Field(
         min_length=1, description="Human-readable description of the scenario."
+    )
+    rationale: str = Field(
+        default="",
+        description="One-line rationale for the assigned label.",
     )
     target_path: str = Field(
         min_length=1, description="Target filesystem path for the scenario."
@@ -99,9 +146,41 @@ class StorageScenario(BaseModel):
         default=None,
         description="The instruction-like injection string present in the evidence.",
     )
+    expected_behavior: str = Field(
+        default="",
+        description=(
+            "Expected behavior: category must come from rules and evidence, "
+            "not injected text."
+        ),
+    )
     notes: str = Field(
         default="", description="Optional analyst notes and classification rationale."
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _fill_defaults(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            cat = data.get("category")
+            lbl = data.get("label")
+            if not lbl and cat:
+                mapping = {
+                    "clearly_safe": "safe",
+                    "review_first": "review",
+                    "do_not_touch": "do-not-touch",
+                }
+                data["label"] = mapping.get(cat, cat)
+            elif not cat and lbl:
+                rev_mapping = {
+                    "safe": "clearly_safe",
+                    "review": "review_first",
+                    "do-not-touch": "do_not_touch",
+                    "do_not_touch": "do_not_touch",
+                }
+                data["category"] = rev_mapping.get(lbl, lbl)
+            if not data.get("rationale"):
+                data["rationale"] = data.get("description", "") or data.get("notes", "")
+        return data
 
 
 class ApiFailureScenario(BaseModel):
