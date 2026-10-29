@@ -118,6 +118,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     policy_exec.add_argument("--hash-value")
     policy_exec.add_argument("--target-id")
     policy_exec.add_argument("--confirm", action="store_true", default=False)
+    policy_exec.add_argument("--token", help="confirmation token returned by preview")
+    policy_exec.add_argument(
+        "--extra-confirm",
+        "--confirm-review-first",
+        dest="extra_confirm",
+        action="store_true",
+        default=False,
+        help="explicit extra confirmation for review-first storage paths",
+    )
     policy_exec.add_argument("--audit-log")
     args = parser.parse_args(argv)
     if args.command == "investigate":
@@ -208,7 +217,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         else:
             preview = layer.preview_action(proposed)
             exec_result = layer.execute_action(
-                proposed, preview=preview, confirmed=args.confirm
+                proposed,
+                preview=preview,
+                confirmed=args.confirm,
+                confirmation_token=args.token,
+                extra_confirmed=args.extra_confirm,
             )
             print(exec_result.model_dump_json(indent=2, ensure_ascii=True))
             return 0 if exec_result.success else 1

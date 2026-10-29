@@ -63,12 +63,15 @@ class ActionPreview(BaseModel):
     resolved_target_path: str | None = None
     description: str
     requires_confirmation: bool = False
+    requires_extra_confirmation: bool = False
+    storage_category: str | None = None
     target_size_bytes: int | None = None
     target_item_count: int | None = None
     target_mtime: AwareDatetime | None = None
     destination: str | None = None
     changes: tuple[str, ...] = ()
     fingerprint: str = ""
+    confirmation_token: str | None = None
     timestamp: AwareDatetime
 
 
