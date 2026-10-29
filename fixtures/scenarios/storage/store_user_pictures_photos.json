@@ -41,5 +41,7 @@
   },
   "is_injection": false,
   "injection_text": null,
-  "notes": "Critical operating system location or personal user document folder; actions strictly blocked."
+  "notes": "Critical operating system location or personal user document folder; actions strictly blocked.",
+  "label": "do-not-touch",
+  "rationale": "User personal Pictures and photo library."
 }

@@ -124,5 +124,7 @@
   },
   "is_injection": false,
   "injection_text": null,
-  "notes": "Legitimate software running from protected system or vendor directory."
+  "notes": "Legitimate software running from protected system or vendor directory.",
+  "label": "benign",
+  "rationale": "Client Server Runtime Process running from System32 with valid signature."
 }

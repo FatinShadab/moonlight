@@ -124,5 +124,7 @@
   },
   "is_injection": false,
   "injection_text": null,
-  "notes": "Unsigned portable tool or developer toolchain; legitimate but non-standard."
+  "notes": "Unsigned portable tool or developer toolchain; legitimate but non-standard.",
+  "label": "benign_odd",
+  "rationale": "Portable FFmpeg media transcoder reading and writing multimedia files."
 }

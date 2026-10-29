@@ -123,5 +123,7 @@
   },
   "is_injection": false,
   "injection_text": null,
-  "notes": "Synthetic evidence matching suspicious behavior rules; safe decoy data only."
+  "notes": "Synthetic evidence matching suspicious behavior rules; safe decoy data only.",
+  "label": "suspicious_simulated",
+  "rationale": "System process binary with a corrupted or invalid digital signature check."
 }

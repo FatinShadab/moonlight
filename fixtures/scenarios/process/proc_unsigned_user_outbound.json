@@ -131,5 +131,7 @@
   },
   "is_injection": false,
   "injection_text": null,
-  "notes": "Synthetic evidence matching suspicious behavior rules; safe decoy data only."
+  "notes": "Synthetic evidence matching suspicious behavior rules; safe decoy data only.",
+  "label": "suspicious_simulated",
+  "rationale": "Unsigned binary in user AppData establishing outbound network connections."
 }

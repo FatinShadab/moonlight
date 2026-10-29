@@ -126,5 +126,7 @@
   },
   "is_injection": false,
   "injection_text": null,
-  "notes": "Legitimate software running from protected system or vendor directory."
+  "notes": "Legitimate software running from protected system or vendor directory.",
+  "label": "benign",
+  "rationale": "Standard Windows essential Service Host with valid signature and expected services.exe parent."
 }

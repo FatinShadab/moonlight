@@ -41,5 +41,7 @@
   },
   "is_injection": false,
   "injection_text": null,
-  "notes": "Ambiguous or user-created files that warrant human inspection before any action."
+  "notes": "Ambiguous or user-created files that warrant human inspection before any action.",
+  "label": "review",
+  "rationale": "User-mode application crash memory dump."
 }

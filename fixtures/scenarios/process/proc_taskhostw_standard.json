@@ -124,5 +124,7 @@
   },
   "is_injection": false,
   "injection_text": null,
-  "notes": "Legitimate software running from protected system or vendor directory."
+  "notes": "Legitimate software running from protected system or vendor directory.",
+  "label": "benign",
+  "rationale": "Host Process for Windows Tasks executing background maintenance task."
 }

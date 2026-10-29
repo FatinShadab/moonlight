@@ -121,5 +121,7 @@
   },
   "is_injection": false,
   "injection_text": null,
-  "notes": "Legitimate software running from protected system or vendor directory."
+  "notes": "Legitimate software running from protected system or vendor directory.",
+  "label": "benign",
+  "rationale": "Microsoft Edge browser binary running from Program Files (x86) with valid vendor signature."
 }

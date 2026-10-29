@@ -122,5 +122,7 @@
   },
   "is_injection": false,
   "injection_text": null,
-  "notes": "Legitimate software running from protected system or vendor directory."
+  "notes": "Legitimate software running from protected system or vendor directory.",
+  "label": "benign",
+  "rationale": "Visual Studio Code editor running from Program Files."
 }

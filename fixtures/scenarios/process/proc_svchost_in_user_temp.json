@@ -124,5 +124,7 @@
   },
   "is_injection": false,
   "injection_text": null,
-  "notes": "Synthetic evidence matching suspicious behavior rules; safe decoy data only."
+  "notes": "Synthetic evidence matching suspicious behavior rules; safe decoy data only.",
+  "label": "suspicious_simulated",
+  "rationale": "System process name svchost.exe executing from user-writable Temp folder."
 }
