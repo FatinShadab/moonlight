@@ -233,6 +233,10 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 - Runs gitleaks detect --source=. --verbose --redact, failing on any secret finding without exposing raw secrets in CI logs.
 - Validation: clean scan across all commits in repository history.
 
+## 2026-10-30 — Desktop review interface
+
+- Built the PySide6 review interface with a moonlit dark theme, event bus telemetry, interactive citation click-through, action preview and consent dialog with in-memory token binding, and offscreen screenshot automation.
+
 ## Planned evaluation
 
 The [PRD](Moonlight%20Product%20Requirements%20Document.md) defines process and storage rule metrics, citation coverage, schema validity, ablations, and robustness scenarios. Results will include the labeled-set size and reproduction method when measurements exist. No performance or safety metric is claimed yet.
