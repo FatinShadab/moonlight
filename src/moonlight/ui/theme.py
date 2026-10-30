@@ -20,14 +20,14 @@ class ThemeColors:
 
     # Background and surface layers
     bg_canvas: str = "#0b0f19"  # Deepest midnight blue-black canvas
-    bg_surface: str = "#131c2e"  # Deep blue-gray card/container surface
-    bg_surface_alt: str = "#182338"  # Slightly raised surface (nav rail, side panel)
-    bg_surface_hover: str = "#1e2c45"  # Hover state on surfaces
-    bg_surface_active: str = "#243452"  # Selected/pressed state
+    bg_surface: str = "#1e293b"  # Deep blue-gray card/container surface
+    bg_surface_alt: str = "#111827"  # Raised panels (nav rail, side panel, top bar)
+    bg_surface_hover: str = "#243452"  # Hover state on surfaces
+    bg_surface_active: str = "#334155"  # Selected/pressed state
 
     # Borders and dividers
     border_subtle: str = "#1e293b"  # Subtle container boundary
-    border_default: str = "#2b3b55"  # Standard input/card border
+    border_default: str = "#334155"  # Standard input/card border
     border_focus: str = "#38bdf8"  # High-contrast focus outline (soft sky blue)
 
     # Typography
@@ -138,6 +138,11 @@ def build_qss() -> str:
     outline: none;
 }}
 
+QPushButton, QToolButton, QListWidget, QTabBar::tab, QCheckBox, QComboBox,
+QLineEdit, QTextEdit, QPlainTextEdit, QTableWidget, QTreeView {{
+    outline: none;
+}}
+
 QMainWindow, QDialog {{
     background-color: {c.bg_canvas};
     color: {c.text_primary};
@@ -145,10 +150,6 @@ QMainWindow, QDialog {{
 
 QWidget {{
     background-color: transparent;
-}}
-
-QWidget:focus {{
-    outline: 2px solid {c.border_focus};
 }}
 
 /* Surface Card Containers */
@@ -160,8 +161,8 @@ QFrame#card, QFrame.card, QFrame#surface_card {{
 }}
 
 QFrame#card_subtle, QFrame.card_subtle {{
-    background-color: {c.bg_surface_alt};
-    border: 1px solid {c.border_subtle};
+    background-color: {c.bg_surface};
+    border: 1px solid {c.border_default};
     border-radius: {r.md}px;
 }}
 
@@ -173,7 +174,7 @@ QFrame#nav_rail {{
     max-width: 220px;
 }}
 
-QPushButton#nav_button {{
+QPushButton#nav_button, QPushButton#btn_world_view {{
     background-color: transparent;
     color: {c.text_secondary};
     text-align: left;
@@ -185,20 +186,22 @@ QPushButton#nav_button {{
     font-weight: 500;
 }}
 
-QPushButton#nav_button:hover {{
+QPushButton#nav_button:hover, QPushButton#btn_world_view:hover {{
     background-color: {c.bg_surface_hover};
     color: {c.text_primary};
 }}
 
-QPushButton#nav_button:checked, QPushButton#nav_button[active="true"] {{
+QPushButton#nav_button:checked, QPushButton#nav_button[active="true"],
+QPushButton#btn_world_view:checked, QPushButton#btn_world_view[active="true"] {{
     background-color: {c.accent_surface};
     color: {c.accent_primary};
     border-left: 3px solid {c.accent_primary};
     font-weight: 600;
 }}
 
-QPushButton#nav_button:focus {{
-    border: 1px dotted {c.border_focus};
+QPushButton#nav_button:focus-visible, QPushButton#nav_button:focus,
+QPushButton#btn_world_view:focus-visible, QPushButton#btn_world_view:focus {{
+    border: 1px solid {c.border_focus};
     border-left: 3px solid {c.accent_primary};
 }}
 
@@ -210,12 +213,16 @@ QFrame#top_bar {{
     padding: 0px 16px;
 }}
 
-/* Right Side Panel */
-QFrame#side_panel {{
+/* Right Side Panel Dock */
+QFrame#side_panel, QTabWidget#side_panel {{
     background-color: {c.bg_surface_alt};
     border-left: 1px solid {c.border_default};
     min-width: 320px;
-    max-width: 400px;
+    max-width: 420px;
+}}
+
+QTabWidget#side_panel > QWidget {{
+    background-color: {c.bg_surface_alt};
 }}
 
 /* Standard Buttons */
@@ -238,33 +245,68 @@ QPushButton:pressed {{
 }}
 
 QPushButton:disabled {{
-    background-color: {c.bg_surface};
+    background-color: {c.bg_surface_alt};
     color: {c.text_muted};
     border-color: {c.border_subtle};
 }}
 
-QPushButton:focus {{
-    border: 2px solid {c.border_focus};
+QPushButton:focus-visible, QPushButton:focus {{
+    border: 1px solid {c.border_focus};
+    background-color: rgba(56, 189, 248, 0.12);
+}}
+
+/* Zoom & Compact Icon Buttons */
+QPushButton#zoom_btn_1, QPushButton#zoom_btn_2, QPushButton#zoom_btn_3,
+QPushButton[class="icon-btn"], QPushButton.icon-btn {{
+    padding: 0px;
+    min-width: 28px;
+    max-width: 28px;
+    min-height: 28px;
+    max-height: 28px;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+    border-radius: {r.sm}px;
+    background-color: {c.bg_surface_hover};
+    border: 1px solid {c.border_default};
+}}
+
+QPushButton#zoom_btn_1:hover,
+QPushButton#zoom_btn_2:hover,
+QPushButton#zoom_btn_3:hover,
+QPushButton[class="icon-btn"]:hover {{
+    background-color: {c.bg_surface_active};
+    border-color: {c.accent_primary};
 }}
 
 /* Primary Accent Button */
-QPushButton#primary_button, QPushButton[primary="true"] {{
+QPushButton#primary_button,
+QPushButton[primary="true"],
+QPushButton#run_investigation_btn {{
     background-color: {c.accent_primary};
     color: {c.text_inverse};
     border: 1px solid {c.accent_border};
-    font-weight: 600;
+    font-weight: 700;
+    letter-spacing: 0.3px;
 }}
 
-QPushButton#primary_button:hover, QPushButton[primary="true"]:hover {{
+QPushButton#primary_button:hover,
+QPushButton[primary="true"]:hover,
+QPushButton#run_investigation_btn:hover {{
     background-color: {c.accent_hover};
+    border-color: {c.accent_primary};
 }}
 
-QPushButton#primary_button:pressed, QPushButton[primary="true"]:pressed {{
+QPushButton#primary_button:pressed,
+QPushButton[primary="true"]:pressed,
+QPushButton#run_investigation_btn:pressed {{
     background-color: {c.accent_surface};
     color: {c.accent_primary};
 }}
 
-QPushButton#primary_button:disabled, QPushButton[primary="true"]:disabled {{
+QPushButton#primary_button:disabled,
+QPushButton[primary="true"]:disabled,
+QPushButton#run_investigation_btn:disabled {{
     background-color: {c.border_default};
     color: {c.text_muted};
     border-color: {c.border_subtle};
@@ -295,7 +337,7 @@ QLineEdit, QTextEdit, QPlainTextEdit, QComboBox {{
 }}
 
 QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QComboBox:focus {{
-    border: 2px solid {c.border_focus};
+    border: 1px solid {c.border_focus};
 }}
 
 QComboBox::drop-down {{
@@ -335,7 +377,7 @@ QCheckBox::indicator:checked {{
 }}
 
 QCheckBox:focus {{
-    border: 1px dotted {c.border_focus};
+    border: none;
 }}
 
 /* Tab Widget (Side Panel, Content) */
@@ -364,7 +406,7 @@ QTabBar::tab:selected {{
 }}
 
 QTabBar::tab:focus {{
-    border: 1px dotted {c.border_focus};
+    border-bottom: 2px solid {c.accent_primary};
 }}
 
 /* Tables and Tree Views */
@@ -462,7 +504,7 @@ QLabel#caption_label {{
 
 /* Empty and Loading States */
 QFrame#empty_state {{
-    background-color: {c.bg_surface};
+    background-color: #0b1120;
     border: 1px dashed {c.border_default};
     border-radius: {r.lg}px;
     padding: {SPACING.xl}px;
@@ -471,7 +513,7 @@ QFrame#empty_state {{
 QLabel#empty_state_title {{
     font-size: {t.title_size};
     font-weight: 600;
-    color: {c.text_secondary};
+    color: {c.text_primary};
 }}
 
 QLabel#empty_state_text {{
@@ -561,12 +603,10 @@ def get_confidence_chip_style(confidence: float) -> tuple[str, str]:
 
 def get_fallback_badge_style(reason: str | None = None) -> tuple[str, str]:
     """Return (label_text, qss_style) for a rules-only fallback badge."""
-    c = COLORS
-    r = RADII
     text = "rules-only fallback"
     style = (
-        f"background-color: {c.warning_bg}; color: {c.warning_text}; "
-        f"font-weight: 600; font-size: 11px; padding: 2px 8px; "
-        f"border-radius: {r.sm}px; border: 1px solid {c.warning_border};"
+        "background-color: rgba(245, 158, 11, 0.12); color: #fbbf24; "
+        "font-weight: 600; font-size: 11px; padding: 3px 8px; "
+        "border-radius: 6px; border: 1px solid rgba(245, 158, 11, 0.35);"
     )
     return (text, style)

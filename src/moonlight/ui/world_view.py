@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QCheckBox,
     QFrame,
@@ -117,7 +117,7 @@ class WorldViewWidget(QWidget):
         self.chk_reduce_motion.toggled.connect(self._on_reduce_motion_toggled)
         tb_layout.addWidget(self.chk_reduce_motion)
 
-        # Zoom buttons
+        # Zoom buttons with dedicated class and fixed dimensions
         zoom_box = QHBoxLayout()
         zoom_box.setSpacing(SPACING.xs)
         z_lbl = QLabel("Zoom:")
@@ -127,7 +127,10 @@ class WorldViewWidget(QWidget):
         for z in (1, 2, 3):
             btn = QPushButton(f"{z}x")
             btn.setObjectName(f"zoom_btn_{z}")
-            btn.setFixedSize(30, 24)
+            btn.setProperty("class", "icon-btn")
+            btn.setFixedSize(28, 28)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.setToolTip(f"Zoom {z * 100}% ({z}x)")
             btn.clicked.connect(
                 lambda _checked=False, level=z: self.view.apply_zoom(level)
             )

@@ -24,6 +24,8 @@ from PySide6.QtWidgets import (
     QLabel,
     QMainWindow,
     QPushButton,
+    QSizePolicy,
+    QSplitter,
     QStackedWidget,
     QVBoxLayout,
     QWidget,
@@ -114,7 +116,7 @@ class MoonlightMainWindow(QMainWindow):
         self.top_bar = self._create_top_bar()
         root_layout.addWidget(self.top_bar)
 
-        # 2. Main Body: Left Rail + Central Content Stack + Right Side Panel
+        # 2. Main Body: Left Rail + Responsive Horizontal QSplitter
         body_layout = QHBoxLayout()
         body_layout.setContentsMargins(0, 0, 0, 0)
         body_layout.setSpacing(0)
@@ -156,8 +158,6 @@ class MoonlightMainWindow(QMainWindow):
         self.world_view.citation_clicked.connect(self._on_citation_clicked)
         self.stacked_views.addWidget(self.world_view)
 
-        body_layout.addWidget(self.stacked_views, stretch=1)
-
         # Right Side Panel (Activity Timeline + Approvals)
         self.side_panel = RightSidePanelWidget(
             event_bus=self.bus,
@@ -166,8 +166,18 @@ class MoonlightMainWindow(QMainWindow):
         )
         self.side_panel.citation_clicked.connect(self._on_citation_clicked)
         self.side_panel.action_executed.connect(self._on_action_executed)
-        body_layout.addWidget(self.side_panel)
 
+        # Horizontal Splitter between central workspace and right dock
+        self.content_splitter = QSplitter(Qt.Orientation.Horizontal)
+        self.content_splitter.setObjectName("content_splitter")
+        self.content_splitter.addWidget(self.stacked_views)
+        self.content_splitter.addWidget(self.side_panel)
+        self.content_splitter.setStretchFactor(0, 1)
+        self.content_splitter.setStretchFactor(1, 0)
+        self.content_splitter.setCollapsible(0, False)
+        self.content_splitter.setCollapsible(1, False)
+
+        body_layout.addWidget(self.content_splitter, stretch=1)
         root_layout.addLayout(body_layout)
 
         # Set default active view to Reports (View 2)
@@ -200,6 +210,7 @@ class MoonlightMainWindow(QMainWindow):
         self.btn_replay.setObjectName("btn_replay")
         self.btn_replay.setCheckable(True)
         self.btn_replay.setChecked(True)
+        self.btn_replay.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_replay.clicked.connect(lambda: self._set_mode("replay"))
         mode_box.addWidget(self.btn_replay)
 
@@ -207,15 +218,20 @@ class MoonlightMainWindow(QMainWindow):
         self.btn_live.setObjectName("btn_live")
         self.btn_live.setCheckable(True)
         self.btn_live.setChecked(False)
+        self.btn_live.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_live.clicked.connect(lambda: self._set_mode("live"))
         mode_box.addWidget(self.btn_live)
 
         layout.addLayout(mode_box)
 
-        # Scenario Selector (Active in Replay Mode)
+        # Scenario / Target Selector (Active in Replay Mode, responsive expanding)
         self.scenario_combo = QComboBox()
         self.scenario_combo.setObjectName("scenario_selector")
-        self.scenario_combo.setMinimumWidth(240)
+        self.scenario_combo.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
+        self.scenario_combo.setMinimumWidth(260)
+        self.scenario_combo.setMaximumWidth(480)
         self.scenario_combo.currentIndexChanged.connect(self._on_scenario_changed)
         layout.addWidget(self.scenario_combo)
 
@@ -230,7 +246,7 @@ class MoonlightMainWindow(QMainWindow):
         self.provider_combo.currentTextChanged.connect(self._on_provider_changed)
         layout.addWidget(self.provider_combo)
 
-        # Provider Badge
+        # Provider Badge (subtle pill)
         self.provider_badge = ProviderBadgeWidget(provider="mock")
         layout.addWidget(self.provider_badge)
 
@@ -244,11 +260,13 @@ class MoonlightMainWindow(QMainWindow):
         )
         layout.addWidget(self.status_lbl)
 
-        # Investigate / Run Button
+        # Investigate / Run Button (Primary prominent CTA)
         self.run_btn = QPushButton("Investigate")
         self.run_btn.setObjectName("run_investigation_btn")
         self.run_btn.setProperty("primary", "true")
         self.run_btn.setIcon(get_icon("refresh"))
+        self.run_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.run_btn.setToolTip("Execute grounded investigation on selected target")
         self.run_btn.clicked.connect(self.trigger_investigation)
         layout.addWidget(self.run_btn)
 

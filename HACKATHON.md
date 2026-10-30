@@ -241,6 +241,17 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 
 - Built the optional 2:1 isometric device world view (QGraphicsView) visualizing process and storage districts, illuminating discovered nodes upon investigation events, floating lantern focus tracking with reduce-motion preference, and procedural diamond fallback.
 
+## 2026-10-30 — Desktop UI/UX responsive refactoring
+
+- Refactored UI layout architecture, widget properties, and dark theme QSS across the desktop interface adhering to Nielsen's 10 Usability Heuristics and Shneiderman's Golden Rules.
+- Fixed crushed zoom buttons in World Map header by setting explicit 28x28 icon-btn dimensions, zero padding, and centered text.
+- Eliminated native focus rectangle double-border and dotted-border artifacts across all controls.
+- Prevented right dock (Activity and Approvals) horizontal overflow and zero-event collapse via a responsive non-collapsible horizontal QSplitter, 320px-420px width bounds, disabled scroll arrows, and text/citation wrapping.
+- Refactored top bar hierarchy with expanding process/scenario selector, prominent primary Investigate CTA, and subtle amber pill badges for cloud placeholder model and rules-only fallback.
+- Added clean Reports view QStackedWidget with dedicated empty state on #0b1120 and top-aligned report cards container.
+- Polished information architecture: de-escalated benign hypothesis likelihood from alarming red to info cyan/teal, removed duplicate plain-text risk labels, and parsed raw derivation strings into structured metadata.
+- Validation: all 533 tests pass across the suite; Ruff format, Ruff lint, and strict mypy pass cleanly with 0 errors across 95 files.
+
 ## Planned evaluation
 
 The [PRD](Moonlight%20Product%20Requirements%20Document.md) defines process and storage rule metrics, citation coverage, schema validity, ablations, and robustness scenarios. Results will include the labeled-set size and reproduction method when measurements exist. No performance or safety metric is claimed yet.
