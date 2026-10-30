@@ -98,14 +98,16 @@ class ProcessesViewWidget(QWidget):
         # Process Items Table
         self.table = QTableWidget()
         self.table.setColumnCount(6)
-        self.table.setHorizontalHeaderLabels([
-            "Citation ID",
-            "Subject ID",
-            "Evidence Kind",
-            "Availability",
-            "Value / Summary",
-            "Severity",
-        ])
+        self.table.setHorizontalHeaderLabels(
+            [
+                "Citation ID",
+                "Subject ID",
+                "Evidence Kind",
+                "Availability",
+                "Value / Summary",
+                "Severity",
+            ]
+        )
         self.table.horizontalHeader().setSectionResizeMode(
             0, QHeaderView.ResizeMode.ResizeToContents
         )
@@ -276,13 +278,15 @@ class StorageViewWidget(QWidget):
         # Storage Table
         self.table = QTableWidget()
         self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels([
-            "Citation ID",
-            "Target Path",
-            "Policy Classification",
-            "Size",
-            "Finding Details",
-        ])
+        self.table.setHorizontalHeaderLabels(
+            [
+                "Citation ID",
+                "Target Path",
+                "Policy Classification",
+                "Size",
+                "Finding Details",
+            ]
+        )
         self.table.horizontalHeader().setSectionResizeMode(
             0, QHeaderView.ResizeMode.ResizeToContents
         )
@@ -448,12 +452,14 @@ class SentToModelWidget(QWidget):
 
         self.redaction_table = QTableWidget()
         self.redaction_table.setColumnCount(4)
-        self.redaction_table.setHorizontalHeaderLabels([
-            "Location",
-            "Operation",
-            "Category",
-            "Placeholder Assigned",
-        ])
+        self.redaction_table.setHorizontalHeaderLabels(
+            [
+                "Location",
+                "Operation",
+                "Category",
+                "Placeholder Assigned",
+            ]
+        )
         self.redaction_table.horizontalHeader().setSectionResizeMode(
             0, QHeaderView.ResizeMode.ResizeToContents
         )
@@ -569,14 +575,16 @@ class PolicyLogWidget(QWidget):
         # Audit Table
         self.table = QTableWidget()
         self.table.setColumnCount(6)
-        self.table.setHorizontalHeaderLabels([
-            "Timestamp (UTC)",
-            "Event Type",
-            "Action Type",
-            "Verdict",
-            "Target Subject / Path",
-            "Details / Reason",
-        ])
+        self.table.setHorizontalHeaderLabels(
+            [
+                "Timestamp (UTC)",
+                "Event Type",
+                "Action Type",
+                "Verdict",
+                "Target Subject / Path",
+                "Details / Reason",
+            ]
+        )
         self.table.horizontalHeader().setSectionResizeMode(
             0, QHeaderView.ResizeMode.ResizeToContents
         )

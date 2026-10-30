@@ -177,15 +177,17 @@ def test_citation_clickthrough_jumps_to_processes_and_storage(
     win.processes_view.set_bundles([bundle])
 
     # Populate storage table
-    win.storage_view.set_storage_items([
-        {
-            "citation_id": storage_ev_id,
-            "path": r"C:\Temp\cache.tmp",
-            "category": "clearly_safe",
-            "size_bytes": 1024,
-            "details": "Cache item",
-        }
-    ])
+    win.storage_view.set_storage_items(
+        [
+            {
+                "citation_id": storage_ev_id,
+                "path": r"C:\Temp\cache.tmp",
+                "category": "clearly_safe",
+                "size_bytes": 1024,
+                "details": "Cache item",
+            }
+        ]
+    )
 
     # 1. Click process citation -> should jump to Processes view (index 0)
     win._select_nav_view(2)  # Start on Reports view
@@ -285,8 +287,7 @@ def test_replay_mode_loading_populates_views(qapp: QApplication) -> None:
     # Verify report view was populated
     assert win.report_view.report is not None
     assert (
-        win.report_view.report.summary
-        == "Replay investigation of synthetic scenario"
+        win.report_view.report.summary == "Replay investigation of synthetic scenario"
     )
     assert "LOW" in win.report_view.risk_label.text()
 

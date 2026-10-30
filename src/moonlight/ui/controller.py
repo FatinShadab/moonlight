@@ -89,8 +89,7 @@ class InvestigationWorker(QThread):
         # 1. Collection Phase
         self.status_message.emit("Collecting investigation evidence...")
         msg = (
-            f"Starting investigation ({self.mode} mode, "
-            f"provider={self.provider_name})."
+            f"Starting investigation ({self.mode} mode, provider={self.provider_name})."
         )
         bus.emit_event(
             kind="collection_started",
@@ -113,13 +112,15 @@ class InvestigationWorker(QThread):
             elif isinstance(matched, StorageScenario):
                 bundles.append(matched.bundle)
                 cat, _reason = classify_path_storage(matched.target_path)
-                storage_items.append({
-                    "citation_id": f"ev-storage-{matched.id}",
-                    "path": matched.target_path,
-                    "category": matched.category,
-                    "size_bytes": 1024 * 1024 * 5,  # 5 MB placeholder
-                    "details": f"{matched.description} ({matched.rationale})",
-                })
+                storage_items.append(
+                    {
+                        "citation_id": f"ev-storage-{matched.id}",
+                        "path": matched.target_path,
+                        "category": matched.category,
+                        "size_bytes": 1024 * 1024 * 5,  # 5 MB placeholder
+                        "details": f"{matched.description} ({matched.rationale})",
+                    }
+                )
                 target_subject = matched.target_path
             elif matched is not None:
                 bundles.append(matched.bundle)
@@ -266,14 +267,8 @@ class InvestigationWorker(QThread):
                 )
                 decision = validate_proposed_action(proposed)
                 verdict = "ALLOWED" if decision.allowed else "BLOCKED"
-                rej = (
-                    f" ({decision.rejection_reason})"
-                    if not decision.allowed
-                    else ""
-                )
-                dec_msg = (
-                    f"Policy verdict for {action_rec.action_id}: {verdict}{rej}"
-                )
+                rej = f" ({decision.rejection_reason})" if not decision.allowed else ""
+                dec_msg = f"Policy verdict for {action_rec.action_id}: {verdict}{rej}"
                 bus.emit_event(
                     kind="policy_decision",
                     message=dec_msg,
