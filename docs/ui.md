@@ -11,9 +11,16 @@ flowchart TD
     subgraph UI ["Desktop Review Interface (PySide6)"]
         TopBar["Top Control Bar (Replay / Live Mode, Badges)"]
         NavRail["Left Navigation Rail"]
-        CentralStack["Central Views (Processes, Storage, Reports, Wire Payload, Policy Log)"]
+        CentralStack["Central Views (Processes, Storage, Reports, Wire Payload, Policy Log, World)"]
         RightPanel["Right Side Panel (Activity Timeline & Approvals)"]
         ConsentDialog["ActionPreviewDialog (In-Memory Token, Consent)"]
+    end
+
+    subgraph WorldView ["Isometric Device World View"]
+        WorldModel["WorldModel (Pure-Python Coordinates)"]
+        Renderer["IsometricWorldView (QGraphicsView 2:1)"]
+        Atlas["TileAtlas (Spritesheet / Procedural Fallback)"]
+        Lantern["LanternMarkerItem (Focus Tracking)"]
     end
 
     subgraph Telemetry ["Event Bus (moonlight.ui.events)"]
@@ -37,6 +44,8 @@ flowchart TD
     Engine --> EventBus
     EventBus --> Events
     Events --> RightPanel
+    Events --> WorldView
+    WorldView --> CentralStack
 ```
 
 ---
@@ -68,6 +77,10 @@ Moonlight's visual presentation is driven by a bespoke design token system in [`
 ![Sent to the Model](images/ui_sent_to_model.png)
 *Figure 3: Privacy inspection tab displaying the exact serialized wire payload JSON alongside the local redaction audit log.*
 
+### 4. Isometric Device World View
+![Isometric World View](images/ui_world_view.png)
+*Figure 4: Isometric world map visualizing endpoint process and storage districts, illuminated discovered nodes, and a floating lantern marker tracking investigation focus.*
+
 ---
 
 ## Layout and Panels
@@ -81,7 +94,7 @@ Provides one-click switching between investigation views:
 - **Reports**: Executive summary, risk tier, confidence, separated facts vs hypotheses, benign explanations, missing evidence, uncertainty notes, and recommended actions.
 - **Sent to the model**: The exact minimized payload JSON eligible for model use and the local redaction log.
 - **Policy log**: Append-only local audit log recording every policy verification, preview, and execution decision.
-- *Extensible Extension Slot*: Pre-configured placeholder for optional future World View integration.
+- **World Map**: Visual isometric device world map reflecting endpoint components and investigation progression.
 
 ### 2. Top Control Bar
 - **Replay / Live Mode Toggle**: Replay mode (default) evaluates reproducible labeled scenarios; Live mode runs read-only local machine collection.
@@ -99,6 +112,35 @@ A high-performance `QStackedWidget` hosting the active investigation panel, with
 
 ---
 
+## Isometric World View Visualization
+
+The optional **Isometric World View** (`src/moonlight/ui/world_view.py`) visualizes investigations as a lit-up device map. It strictly **reflects** real events and data, never adds powers, and leaves policy gating unchanged:
+
+1. **2:1 Isometric Projection**:
+   - Screen coordinates: `sx = (gx - gy) * 16`, `sy = (gx + gy) * 8`.
+   - Depth sorting: `zValue = gx + gy` ensures front tiles naturally overlap rear tiles.
+   - Integer pixel scaling (1x, 2x, 3x) with smoothing disabled (`Antialiasing=False`, `SmoothPixmapTransform=False`) preserves crisp retro pixel art.
+2. **Material Semantic Mapping**:
+   - `clearly_safe` -> **Dirt** (`#ad7757`): Verified harmless processes and safe user cache directories.
+   - `review_first` -> **Grass** (`#75a743`): Ambiguous items, download directories, or processes requiring analyst confirmation.
+   - `do_not_touch` -> **Stone / Rock** (`#819796`): Protected system roots (`System32`, `Program Files`) and critical Windows system processes.
+   - `unavailable / error` -> **Water / Fog** (`#73bed3` / `#1e293b`): Missing evidence, unreachable endpoints, or unexplored peripheral boundaries.
+3. **Event-Driven Illumination**:
+   - Unrevealed tiles start in deep blue-gray darkness (`#0b0f19` tint).
+   - As `InvestigationEvent`s arrive across the EventBus, matching nodes are illuminated and lit up.
+   - A floating **lantern marker** moves between tiles to track the investigator's active telemetry focus.
+4. **Reduce Motion Setting**:
+   - An accessible checkbox toggle allows users to disable animation.
+   - When enabled, the lantern snaps immediately to target coordinates with zero travel duration.
+5. **Asset Graceful Degradation**:
+   - Uses `assets/world/spritesheet.png` and `atlas.json` (CC0 public domain Kenney tiles).
+   - If sprite assets are absent or in headless CI clones, it automatically falls back to procedural shaded diamond blocks.
+6. **Interactive Selection & Excerpt Card**:
+   - Clicking any isometric tile selects it, reveals grounded details (size, category, domain), and displays its report excerpt.
+   - Clicking the excerpt's citation button automatically jumps to the matching row in the Processes or Storage tables.
+
+---
+
 ## Safety Guarantees & Consent Flow
 
 In strict compliance with `AGENTS.md` rules:
@@ -112,22 +154,13 @@ In strict compliance with `AGENTS.md` rules:
 
 ---
 
-## Interactive Citation Click-Through
-
-Every observed fact and hypothesis in the report displays clickable citation chips (e.g. `[ev-process-executable_path-...]` or `[E1]`). Clicking any citation chip:
-1. Automatically navigates the central stacked widget to the appropriate view (`ProcessesViewWidget` for process evidence; `StorageViewWidget` for disk findings).
-2. Scrolls the table to the exact row matching the citation ID.
-3. Selects and highlights the row for immediate inspection.
-
----
-
 ## Headless Testing and Offscreen Verification
 
-All UI components and dialogs are verified via automated headless pytest suites using Qt's `offscreen` platform plugin (`os.environ["QT_QPA_PLATFORM"] = "offscreen"`):
+All UI components, dialogs, and the isometric renderer are verified via automated headless pytest suites using Qt's `offscreen` platform plugin (`os.environ["QT_QPA_PLATFORM"] = "offscreen"`):
 
 ```powershell
-# Run UI component and window integration tests:
-.venv\Scripts\pytest.exe tests/test_ui_window.py tests/test_ui_dialogs.py tests/test_ui_badge.py
+# Run all UI component, dialog, and isometric world view tests:
+.venv\Scripts\pytest.exe tests/test_ui_world.py tests/test_ui_window.py tests/test_ui_dialogs.py tests/test_ui_badge.py
 
 # Regenerate offscreen screenshots:
 .venv\Scripts\python.exe scripts/generate_ui_screenshots.py

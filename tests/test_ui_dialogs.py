@@ -15,19 +15,10 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock
 
-import pytest
 from PySide6.QtWidgets import QApplication
 
 from moonlight.policy.actions import ActionType, ProposedAction
 from moonlight.ui.dialogs import ActionPreviewDialog, LiveProviderWarningDialog
-
-
-@pytest.fixture(scope="session")
-def qapp() -> QApplication:
-    app = QApplication.instance()
-    if not isinstance(app, QApplication):
-        app = QApplication([])
-    return app
 
 
 def test_action_preview_dialog_displays_details(

@@ -1,10 +1,10 @@
 """Main review window for Moonlight investigation and remediation interface.
 
 Features:
-- Left navigation rail: Processes, Storage, Reports, Sent to the model, Policy log.
-- Extensible structure for optional future World View integration.
+- Left navigation rail: Processes, Storage, Reports, Sent to model, Policy log, World.
+- Extensible structure for optional isometric World View device map.
 - Top bar with Replay / Live toggle, provider badge, scenario selector, run trigger.
-- Central stacked views: Processes, Storage, ReportReview, SentToModel, PolicyLog.
+- Central stacked views: Processes, Storage, Reports, SentToModel, PolicyLog, WorldView.
 - Right side panel with Activity timeline and Approvals queue.
 - Interactive cross-linking: clicking citations jumps to matching evidence rows.
 - Consent dialog flow: confirmation token held in memory, policy-gated execution.
@@ -49,6 +49,7 @@ from moonlight.ui.views import (
     SentToModelWidget,
     StorageViewWidget,
 )
+from moonlight.ui.world_view import WorldViewWidget
 
 
 class NavButton(QPushButton):
@@ -88,6 +89,7 @@ class MoonlightMainWindow(QMainWindow):
         self.bus = event_bus if event_bus is not None else get_event_bus()
         self.audit_logger = audit_logger or PolicyAuditLogger()
         self._hooks = dict(hooks) if hooks else {}
+        self._scenarios_map: dict[str, Any] = {}
 
         # Controller managing async execution
         self.controller = InvestigationController(event_bus=self.bus, parent=self)
@@ -149,6 +151,11 @@ class MoonlightMainWindow(QMainWindow):
         self.policy_log_view = PolicyLogWidget()
         self.stacked_views.addWidget(self.policy_log_view)
 
+        # View 5: World View (Isometric Device Map)
+        self.world_view = WorldViewWidget(event_bus=self.bus, parent=self)
+        self.world_view.citation_clicked.connect(self._on_citation_clicked)
+        self.stacked_views.addWidget(self.world_view)
+
         body_layout.addWidget(self.stacked_views, stretch=1)
 
         # Right Side Panel (Activity Timeline + Approvals)
@@ -163,41 +170,41 @@ class MoonlightMainWindow(QMainWindow):
 
         root_layout.addLayout(body_layout)
 
-        # Default view: Reports
+        # Set default active view to Reports (View 2)
         self._select_nav_view(2)
 
     def _create_top_bar(self) -> QFrame:
         bar = QFrame()
         bar.setObjectName("top_bar")
         layout = QHBoxLayout(bar)
-        layout.setContentsMargins(SPACING.md, SPACING.xs, SPACING.md, SPACING.xs)
+        layout.setContentsMargins(SPACING.md, SPACING.sm, SPACING.md, SPACING.sm)
         layout.setSpacing(SPACING.md)
 
-        # Brand / Title
+        # App branding title
         brand_lbl = QLabel("MOONLIGHT")
+        brand_lbl.setObjectName("app_brand")
         brand_lbl.setStyleSheet(
-            f"font-size: 16px; font-weight: 800; color: {COLORS.accent_primary}; "
-            f"letter-spacing: 1px;"
+            f"color: {COLORS.accent_primary}; font-weight: 800; font-size: 15px; "
+            f"letter-spacing: 2px;"
         )
         layout.addWidget(brand_lbl)
 
         sep1 = QLabel("|")
-        sep1.setStyleSheet(f"color: {COLORS.border_default};")
+        sep1.setStyleSheet(f"color: {COLORS.border_subtle}; font-weight: 300;")
         layout.addWidget(sep1)
 
-        # Replay / Live Toggle
+        # Mode toggle: Replay vs Live
         mode_box = QHBoxLayout()
         mode_box.setSpacing(2)
-
         self.btn_replay = QPushButton("Replay")
-        self.btn_replay.setObjectName("mode_replay_btn")
+        self.btn_replay.setObjectName("btn_replay")
         self.btn_replay.setCheckable(True)
         self.btn_replay.setChecked(True)
         self.btn_replay.clicked.connect(lambda: self._set_mode("replay"))
         mode_box.addWidget(self.btn_replay)
 
         self.btn_live = QPushButton("Live")
-        self.btn_live.setObjectName("mode_live_btn")
+        self.btn_live.setObjectName("btn_live")
         self.btn_live.setCheckable(True)
         self.btn_live.setChecked(False)
         self.btn_live.clicked.connect(lambda: self._set_mode("live"))
@@ -209,6 +216,7 @@ class MoonlightMainWindow(QMainWindow):
         self.scenario_combo = QComboBox()
         self.scenario_combo.setObjectName("scenario_selector")
         self.scenario_combo.setMinimumWidth(240)
+        self.scenario_combo.currentIndexChanged.connect(self._on_scenario_changed)
         layout.addWidget(self.scenario_combo)
 
         # Provider Selector
@@ -262,7 +270,7 @@ class MoonlightMainWindow(QMainWindow):
 
         self.nav_buttons: list[NavButton] = []
 
-        # 5 Required Navigation Views
+        # 5 Required Core Navigation Views
         nav_items = [
             ("Processes", "processes", 0),
             ("Storage", "storage", 1),
@@ -277,22 +285,18 @@ class MoonlightMainWindow(QMainWindow):
             self.nav_buttons.append(btn)
             layout.addWidget(btn)
 
-        # Extensible placeholder for future World View
+        # Isometric World View Navigation Button
         layout.addSpacing(SPACING.md)
-        world_header = QLabel("EXTENSIONS")
+        world_header = QLabel("VISUALIZATION")
         world_header.setStyleSheet(
             f"font-size: 10px; font-weight: 700; color: {COLORS.text_muted}; "
             f"letter-spacing: 1px; padding: 0 10px 4px 10px;"
         )
         layout.addWidget(world_header)
 
-        self.world_view_btn = QPushButton("World View (Coming Soon)")
-        self.world_view_btn.setObjectName("nav_button")
-        self.world_view_btn.setEnabled(False)
-        self.world_view_btn.setStyleSheet(
-            f"color: {COLORS.text_muted}; font-style: italic; border: none; "
-            f"text-align: left; padding: 8px 16px;"
-        )
+        self.world_view_btn = NavButton("World Map", "world", 5)
+        self.world_view_btn.setObjectName("btn_world_view")
+        self.world_view_btn.clicked.connect(lambda _c=False: self._select_nav_view(5))
         layout.addWidget(self.world_view_btn)
 
         layout.addStretch()
@@ -311,6 +315,8 @@ class MoonlightMainWindow(QMainWindow):
         self.stacked_views.setCurrentIndex(index)
         for btn in self.nav_buttons:
             btn.setChecked(btn.view_index == index)
+        if hasattr(self, "world_view_btn"):
+            self.world_view_btn.setChecked(index == 5)
 
     def _set_mode(self, mode: str) -> None:
         """Toggle between Replay mode and Live mode."""
@@ -320,9 +326,6 @@ class MoonlightMainWindow(QMainWindow):
                 provider_name=self.controller.provider_name, parent=self
             )
             if not dlg.exec():
-                # User cancelled; keep replay mode
-                self.btn_replay.setChecked(True)
-                self.btn_live.setChecked(False)
                 return
 
         self.controller.mode = mode
@@ -351,11 +354,21 @@ class MoonlightMainWindow(QMainWindow):
         try:
             scenarios = load_all_scenarios()
             self.scenario_combo.clear()
+            self._scenarios_map.clear()
             for sc in scenarios:
+                self._scenarios_map[sc.id] = sc
                 display_text = f"{sc.id} ({getattr(sc, 'description', '')[:35]}...)"
                 self.scenario_combo.addItem(display_text, sc.id)
+            if scenarios:
+                self.world_view.load_scenario(scenarios[0])
         except Exception:
             self.scenario_combo.addItem("default (mock)", "default")
+
+    def _on_scenario_changed(self, index: int) -> None:
+        sid = self.scenario_combo.currentData()
+        if sid and str(sid) in self._scenarios_map:
+            sc = self._scenarios_map[str(sid)]
+            self.world_view.load_scenario(sc)
 
     def trigger_investigation(self) -> None:
         """Execute investigation pipeline in background worker."""
@@ -394,7 +407,10 @@ class MoonlightMainWindow(QMainWindow):
         if result.minimization_result is not None:
             self.sent_to_model_view.set_result(result.minimization_result)
 
-        # 5. Switch to Report view by default so analyst sees synthesis
+        # 5. Update World View
+        self.world_view.load_investigation_result(result)
+
+        # 6. Switch to Report view by default so analyst sees synthesis
         self._select_nav_view(2)
 
     def _on_citation_clicked(self, citation_id: str) -> None:

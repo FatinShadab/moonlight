@@ -40,6 +40,7 @@ def get_icon(name: str) -> QIcon:
             "warning": QStyle.StandardPixmap.SP_MessageBoxWarning,
             "refresh": QStyle.StandardPixmap.SP_BrowserReload,
             "chevron_right": QStyle.StandardPixmap.SP_ArrowRight,
+            "world": QStyle.StandardPixmap.SP_DesktopIcon,
         }
         if name in std_mapping:
             pix = style.standardPixmap(std_mapping[name])

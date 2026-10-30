@@ -15,7 +15,6 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
-import pytest
 from PySide6.QtWidgets import QApplication
 
 from moonlight.core.evidence import (
@@ -38,14 +37,6 @@ from moonlight.ui.events import EventBus, InvestigationEvent
 from moonlight.ui.window import MoonlightMainWindow
 
 
-@pytest.fixture(scope="session")
-def qapp() -> QApplication:
-    app = QApplication.instance()
-    if not isinstance(app, QApplication):
-        app = QApplication([])
-    return app
-
-
 def test_main_window_layout_and_navigation(qapp: QApplication) -> None:
     bus = EventBus()
     win = MoonlightMainWindow(event_bus=bus)
@@ -62,9 +53,9 @@ def test_main_window_layout_and_navigation(qapp: QApplication) -> None:
         "Policy log",
     ]
 
-    # Future world view slot exists
+    # World view navigation slot exists and is enabled
     assert win.world_view_btn is not None
-    assert win.world_view_btn.isEnabled() is False
+    assert win.world_view_btn.isEnabled() is True
 
     # Top bar elements exist
     assert win.btn_replay.isChecked() is True

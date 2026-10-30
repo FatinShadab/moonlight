@@ -237,6 +237,10 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 
 - Built the PySide6 review interface with a moonlit dark theme, event bus telemetry, interactive citation click-through, action preview and consent dialog with in-memory token binding, and offscreen screenshot automation.
 
+## 2026-10-30 — Isometric device world view
+
+- Built the optional 2:1 isometric device world view (QGraphicsView) visualizing process and storage districts, illuminating discovered nodes upon investigation events, floating lantern focus tracking with reduce-motion preference, and procedural diamond fallback.
+
 ## Planned evaluation
 
 The [PRD](Moonlight%20Product%20Requirements%20Document.md) defines process and storage rule metrics, citation coverage, schema validity, ablations, and robustness scenarios. Results will include the labeled-set size and reproduction method when measurements exist. No performance or safety metric is claimed yet.
