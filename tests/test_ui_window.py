@@ -439,3 +439,31 @@ def test_report_review_widget_empty_state_and_uncertainty_parsing(
     widget.close()
     widget.deleteLater()
     qapp.processEvents()
+
+
+def test_approvals_panel_repeated_set_actions_preserves_empty_label(
+    qapp: QApplication,
+) -> None:
+    """Verify that repeated set_actions calls never delete empty_label."""
+    from moonlight.ui.panels import ApprovalsPanelWidget
+
+    panel = ApprovalsPanelWidget()
+    panel.show()
+    qapp.processEvents()
+
+    act = RecommendedAction(
+        action_id="mark_reviewed", reason="Looks safe", evidence_ids=()
+    )
+
+    for _ in range(5):
+        panel.set_actions([act])
+        qapp.processEvents()
+        assert panel.empty_label.isVisible() is False
+
+        panel.set_actions([])
+        qapp.processEvents()
+        assert panel.empty_label.isVisible() is True
+
+    panel.close()
+    panel.deleteLater()
+    qapp.processEvents()

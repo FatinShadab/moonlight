@@ -251,15 +251,19 @@ class ActivityTimelineWidget(QWidget):
     def clear_events(self) -> None:
         """Clear all events from the timeline."""
         self._events.clear()
-        while self.events_layout.count() > 0:
-            layout_item = self.events_layout.takeAt(0)
-            if layout_item is not None:
-                w = layout_item.widget()
-                if w is not None:
+        for i in reversed(range(self.events_layout.count())):
+            layout_item = self.events_layout.itemAt(i)
+            if layout_item is None:
+                continue
+            w = layout_item.widget()
+            if w is not None:
+                if w is not self.empty_label:
+                    self.events_layout.removeWidget(w)
                     w.deleteLater()
+            elif layout_item.spacerItem() is not None:
+                self.events_layout.takeAt(i)
 
         self.empty_label.setVisible(True)
-        self.events_layout.addWidget(self.empty_label)
         self.events_layout.addStretch()
         self.count_label.setText("0 Events")
 
@@ -448,16 +452,20 @@ class ApprovalsPanelWidget(QWidget):
         report: Report | None = None,
     ) -> None:
         """Populate approvals panel with recommended actions from report."""
-        while self.items_layout.count() > 0:
-            layout_item = self.items_layout.takeAt(0)
-            if layout_item is not None:
-                w = layout_item.widget()
-                if w is not None:
+        for i in reversed(range(self.items_layout.count())):
+            layout_item = self.items_layout.itemAt(i)
+            if layout_item is None:
+                continue
+            w = layout_item.widget()
+            if w is not None:
+                if w is not self.empty_label:
+                    self.items_layout.removeWidget(w)
                     w.deleteLater()
+            elif layout_item.spacerItem() is not None:
+                self.items_layout.takeAt(i)
 
         if not actions:
             self.empty_label.setVisible(True)
-            self.items_layout.addWidget(self.empty_label)
             self.items_layout.addStretch()
             self.info_label.setText("0 Pending Actions")
             return

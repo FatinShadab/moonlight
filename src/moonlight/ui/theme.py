@@ -102,10 +102,7 @@ class Radii:
 class Typography:
     """Font family and type scale tokens."""
 
-    font_family: str = (
-        "-apple-system, 'Segoe UI', system-ui, BlinkMacSystemFont, "
-        "Roboto, 'Helvetica Neue', sans-serif"
-    )
+    font_family: str = "'Segoe UI', Arial, sans-serif"
     caption_size: str = "11px"
     body_size: str = "13px"
     subtitle_size: str = "14px"
