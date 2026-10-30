@@ -218,7 +218,14 @@ def generate_screenshots() -> None:
     pix_sent.save(str(out_dir / "ui_sent_to_model.png"), "PNG")
     print(f"Captured: {out_dir / 'ui_sent_to_model.png'}")
 
-    # 4. Action Preview Dialog Screenshot
+    # 4. Isometric World View Screenshot
+    win._select_nav_view(5)
+    app.processEvents()
+    pix_world = win.grab()
+    pix_world.save(str(out_dir / "ui_world_view.png"), "PNG")
+    print(f"Captured: {out_dir / 'ui_world_view.png'}")
+
+    # 5. Action Preview Dialog Screenshot
     action = ProposedAction(
         action_type=ActionType.MOVE_TO_RECYCLE_BIN,
         target_path=r"C:\Users\analyst\AppData\Local\Temp\cache_staging.tmp",
@@ -233,9 +240,12 @@ def generate_screenshots() -> None:
     pix_dialog.save(str(out_dir / "ui_consent_dialog.png"), "PNG")
     print(f"Captured: {out_dir / 'ui_consent_dialog.png'}")
     dialog.close()
-
+    dialog.deleteLater()
     win.close()
+    win.deleteLater()
+    app.processEvents()
     print("Screenshot generation complete.")
+    sys.exit(0)
 
 
 if __name__ == "__main__":
