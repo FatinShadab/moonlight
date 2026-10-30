@@ -57,9 +57,9 @@ def test_settings_save_and_load_roundtrip(tmp_path: Path) -> None:
     settings_file = tmp_path / "custom_settings.json"
     custom = AppSettings(
         provider="ollama-cloud",
-        meta_api_key="meta-secret-123",
+        meta_api_key="test-meta-key",
         meta_model="llama-3.1-70b-instruct",
-        ollama_api_key="ollama-secret-456",
+        ollama_api_key="test-ollama-key",
         ollama_model="llama3.3:latest",
         ollama_base_url="https://ollama.com",
         allow_custom_host=False,
