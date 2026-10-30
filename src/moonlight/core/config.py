@@ -147,9 +147,7 @@ def load_settings(path: Path | str | None = None) -> AppSettings:
     # Fall back to environment variables
     env_provider = os.environ.get("PROVIDER", "mock").lower()
     valid_provider: ProviderType = (
-        env_provider
-        if env_provider in ("mock", "ollama-cloud", "meta")
-        else "mock"  # type: ignore[assignment]
+        env_provider if env_provider in ("mock", "ollama-cloud", "meta") else "mock"  # type: ignore[assignment]
     )
 
     return AppSettings(

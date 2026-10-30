@@ -21,7 +21,7 @@ jobs:
       - name: Mypy
         run: mypy
       - name: Pytest
-        run: pytest -q
+        run: python -m pytest -q
       - name: Collect current Windows process
         run: |
           $bundle = moonlight collect --pid $PID

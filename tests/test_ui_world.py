@@ -257,6 +257,10 @@ def test_reduce_motion_setting_snaps_lantern(qapp: QApplication) -> None:
     assert lantern.pos() == QPointF(100, 100)
     assert lantern._anim.state() == QPropertyAnimation.State.Stopped
 
+    lantern._anim.stop()
+    lantern.deleteLater()
+    qapp.processEvents()
+
 
 def test_world_view_widget_interactive_selection_and_signals(
     qapp: QApplication,

@@ -261,6 +261,14 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 - Secrets protection: API keys and local settings persist to gitignored `state/settings.json` with `.env` / environment variable fallback, never logged or exposed.
 - Validation: 551 tests pass across the entire suite; Ruff lint/format clean repo-wide; strict mypy passes with 0 errors across 99 source files.
 
+## 2026-10-30 — CI headless Qt teardown stabilization
+
+- Stabilized PySide6 session teardown on Windows CI runners: maintained a global session reference to `QApplication([])` to prevent premature C++ GC destructor aborts during Python interpreter finalization.
+- Added autouse `_cleanup_qt_widgets` fixture and `pytest_sessionfinish` hook in `tests/conftest.py` calling `closeAllWindows()` and `processEvents()`.
+- Added explicit widget closing, `deleteLater()`, and event processing across all dialog, badge, and world view tests.
+- Updated `.github/workflows/ci.yml` Pytest step to invoke `python -m pytest -q`.
+- Validation: 551 tests pass across the suite; Ruff lint/format clean repo-wide; strict mypy passes with 0 errors across 100 source files.
+
 ## Planned evaluation
 
 The [PRD](Moonlight%20Product%20Requirements%20Document.md) defines process and storage rule metrics, citation coverage, schema validity, ablations, and robustness scenarios. Results will include the labeled-set size and reproduction method when measurements exist. No performance or safety metric is claimed yet.

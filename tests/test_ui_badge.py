@@ -55,6 +55,10 @@ def test_provider_badge_widget(qapp: QApplication) -> None:
     assert badge.text() == CLOUD_PLACEHOLDER_BADGE_TEXT
     assert badge.isVisible() is True
 
+    badge.close()
+    badge.deleteLater()
+    qapp.processEvents()
+
 
 def test_report_review_widget_with_badge(qapp: QApplication) -> None:
     ev_id = make_evidence_id("process", "1", "collector", EvidenceKind.EXECUTABLE_PATH)
@@ -106,6 +110,10 @@ def test_report_review_widget_with_badge(qapp: QApplication) -> None:
     review_widget.set_report(meta_report)
     assert review_widget.badge_widget.isVisible() is False
     assert review_widget.badge_widget.text() == ""
+
+    review_widget.close()
+    review_widget.deleteLater()
+    qapp.processEvents()
 
 
 def test_evaluation_result_records_provider_and_model() -> None:

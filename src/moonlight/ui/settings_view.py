@@ -572,9 +572,7 @@ class SettingsViewWidget(QWidget):
         cache = ReasoningCache()
         cache.clear()
         self.lbl_feedback.setText("Response cache cleared.")
-        self.lbl_feedback.setStyleSheet(
-            f"color: {COLORS.info_text}; font-weight: 600;"
-        )
+        self.lbl_feedback.setStyleSheet(f"color: {COLORS.info_text}; font-weight: 600;")
 
     def _fetch_ollama_models_clicked(self) -> None:
         url = self.input_ollama_url.text().strip()
@@ -585,9 +583,7 @@ class SettingsViewWidget(QWidget):
             self.lbl_ollama_status.setText(
                 "Error: Ollama API key is required to fetch models."
             )
-            self.lbl_ollama_status.setStyleSheet(
-                f"color: {COLORS.risk_high_text};"
-            )
+            self.lbl_ollama_status.setStyleSheet(f"color: {COLORS.risk_high_text};")
             return
 
         self.btn_fetch_models.setEnabled(False)
@@ -693,23 +689,16 @@ class SettingsViewWidget(QWidget):
         """Extract and validate AppSettings from widget inputs."""
         prov_text = self.combo_provider.currentText().lower()
         provider: ProviderType = (
-            prov_text
-            if prov_text in ("mock", "ollama-cloud", "meta")
-            else "mock"  # type: ignore[assignment]
+            prov_text if prov_text in ("mock", "ollama-cloud", "meta") else "mock"  # type: ignore[assignment]
         )
 
         min_growth = float(self.spin_min_growth.value()) * (1024.0 * 1024.0)
 
         meta_mod = (
-            self.combo_meta_model.currentText().strip()
-            or "llama-3.3-70b-instruct"
+            self.combo_meta_model.currentText().strip() or "llama-3.3-70b-instruct"
         )
-        ollama_mod = (
-            self.combo_ollama_model.currentText().strip() or "gemma4:31b"
-        )
-        ollama_url = (
-            self.input_ollama_url.text().strip() or "https://ollama.com"
-        )
+        ollama_mod = self.combo_ollama_model.currentText().strip() or "gemma4:31b"
+        ollama_url = self.input_ollama_url.text().strip() or "https://ollama.com"
 
         return AppSettings(
             provider=provider,
@@ -754,9 +743,5 @@ class SettingsViewWidget(QWidget):
     def _on_reset_clicked(self) -> None:
         defaults = AppSettings()
         self.set_settings(defaults)
-        self.lbl_feedback.setText(
-            "Settings reset to defaults (click Save to persist)."
-        )
-        self.lbl_feedback.setStyleSheet(
-            f"color: {COLORS.info_text}; font-weight: 600;"
-        )
+        self.lbl_feedback.setText("Settings reset to defaults (click Save to persist).")
+        self.lbl_feedback.setStyleSheet(f"color: {COLORS.info_text}; font-weight: 600;")

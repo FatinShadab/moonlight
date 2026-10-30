@@ -51,6 +51,8 @@ def test_action_preview_dialog_displays_details(
     assert dialog.confirmation_token.startswith("cfm_")
 
     dialog.close()
+    dialog.deleteLater()
+    qapp.processEvents()
 
 
 def test_action_preview_tampered_token_blocks_execution(
@@ -85,6 +87,8 @@ def test_action_preview_tampered_token_blocks_execution(
     assert dialog.error_banner.isVisible() is True
 
     dialog.close()
+    dialog.deleteLater()
+    qapp.processEvents()
 
 
 def test_action_preview_missing_token_blocks_execution(
@@ -117,6 +121,8 @@ def test_action_preview_missing_token_blocks_execution(
     assert dialog.error_banner.isVisible() is True
 
     dialog.close()
+    dialog.deleteLater()
+    qapp.processEvents()
 
 
 def test_action_preview_review_first_requires_extra_confirmation(
@@ -152,6 +158,8 @@ def test_action_preview_review_first_requires_extra_confirmation(
         assert dialog.confirm_button.isEnabled() is False
 
     dialog.close()
+    dialog.deleteLater()
+    qapp.processEvents()
 
 
 def test_action_preview_successful_execution_via_policy_layer(
@@ -186,6 +194,8 @@ def test_action_preview_successful_execution_via_policy_layer(
     assert dialog.execution_result.details.get("destination") == "Windows Recycle Bin"
 
     dialog.close()
+    dialog.deleteLater()
+    qapp.processEvents()
 
 
 def test_open_file_location_uses_policy_launcher_hook(
@@ -216,6 +226,8 @@ def test_open_file_location_uses_policy_launcher_hook(
     assert dialog.execution_result.success is True
 
     dialog.close()
+    dialog.deleteLater()
+    qapp.processEvents()
 
 
 def test_blocked_policy_action_disables_confirm(qapp: QApplication) -> None:
@@ -231,6 +243,8 @@ def test_blocked_policy_action_disables_confirm(qapp: QApplication) -> None:
     assert dialog.confirm_button.isEnabled() is False
 
     dialog.close()
+    dialog.deleteLater()
+    qapp.processEvents()
 
 
 def test_live_provider_warning_dialog(qapp: QApplication) -> None:
@@ -246,3 +260,5 @@ def test_live_provider_warning_dialog(qapp: QApplication) -> None:
     assert dialog.proceed_button.isEnabled() is False
 
     dialog.close()
+    dialog.deleteLater()
+    qapp.processEvents()
