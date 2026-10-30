@@ -9,7 +9,7 @@ Provides:
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Final, Literal
+from typing import Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 from PySide6.QtCore import QObject, Signal
@@ -83,9 +83,12 @@ class EventBus(QObject):
         return event
 
 
-_GLOBAL_BUS: Final[EventBus] = EventBus()
+_GLOBAL_BUS: EventBus | None = None
 
 
 def get_event_bus() -> EventBus:
     """Return the shared application event bus."""
+    global _GLOBAL_BUS
+    if _GLOBAL_BUS is None:
+        _GLOBAL_BUS = EventBus()
     return _GLOBAL_BUS

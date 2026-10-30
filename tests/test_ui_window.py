@@ -35,7 +35,6 @@ from moonlight.reasoning.models import (
 from moonlight.reasoning.provider import MockProvider
 from moonlight.ui.badge import CLOUD_PLACEHOLDER_BADGE_TEXT
 from moonlight.ui.events import EventBus, InvestigationEvent
-from moonlight.ui.review import ReportReviewWidget
 from moonlight.ui.window import MoonlightMainWindow
 
 
@@ -90,6 +89,8 @@ def test_main_window_layout_and_navigation(qapp: QApplication) -> None:
     assert win.stacked_views.currentIndex() == 4
 
     win.close()
+    win.deleteLater()
+    qapp.processEvents()
 
 
 def test_provider_badges_in_window(qapp: QApplication) -> None:
@@ -112,6 +113,8 @@ def test_provider_badges_in_window(qapp: QApplication) -> None:
     assert win.provider_badge.text() == CLOUD_PLACEHOLDER_BADGE_TEXT
 
     win.close()
+    win.deleteLater()
+    qapp.processEvents()
 
 
 def test_rules_only_fallback_badge(qapp: QApplication) -> None:
@@ -137,14 +140,18 @@ def test_rules_only_fallback_badge(qapp: QApplication) -> None:
         fallback_reason="Provider timeout after 2 retries",
     )
 
-    review_widget = ReportReviewWidget(report=fallback_report)
-    review_widget.show()
+    bus = EventBus()
+    win = MoonlightMainWindow(event_bus=bus)
+    win.show()
+    win.report_view.set_report(fallback_report)
 
-    assert review_widget.fallback_badge.isVisible() is True
-    assert review_widget.fallback_badge.text() == "rules-only fallback"
-    assert "Provider timeout" in review_widget.fallback_badge.toolTip()
+    assert win.report_view.fallback_badge.isVisible() is True
+    assert win.report_view.fallback_badge.text() == "rules-only fallback"
+    assert "Provider timeout" in win.report_view.fallback_badge.toolTip()
 
-    review_widget.close()
+    win.close()
+    win.deleteLater()
+    qapp.processEvents()
 
 
 def test_citation_clickthrough_jumps_to_processes_and_storage(
@@ -208,6 +215,8 @@ def test_citation_clickthrough_jumps_to_processes_and_storage(
     assert storage_selected[0].text() == storage_ev_id
 
     win.close()
+    win.deleteLater()
+    qapp.processEvents()
 
 
 def test_event_bus_updates_activity_timeline(qapp: QApplication) -> None:
@@ -232,6 +241,8 @@ def test_event_bus_updates_activity_timeline(qapp: QApplication) -> None:
     assert "1 Events" in win.side_panel.activity_widget.count_label.text()
 
     win.close()
+    win.deleteLater()
+    qapp.processEvents()
 
 
 def test_replay_mode_loading_populates_views(qapp: QApplication) -> None:
@@ -301,6 +312,8 @@ def test_replay_mode_loading_populates_views(qapp: QApplication) -> None:
     assert "1 Pending Action" in win.side_panel.approvals_widget.info_label.text()
 
     win.close()
+    win.deleteLater()
+    qapp.processEvents()
 
 
 def test_no_ui_code_path_executes_action_without_dialog(qapp: QApplication) -> None:
@@ -350,3 +363,5 @@ def test_no_ui_code_path_executes_action_without_dialog(qapp: QApplication) -> N
     assert fake_launcher.called is False
 
     win.close()
+    win.deleteLater()
+    qapp.processEvents()
