@@ -44,10 +44,27 @@ from moonlight.ui.views import (
     StorageViewWidget,
 )
 from moonlight.ui.window import MoonlightMainWindow
+from moonlight.ui.world_model import (
+    TileClassification,
+    TileMaterial,
+    WorldModel,
+    WorldTile,
+    material_for_classification,
+)
+from moonlight.ui.world_renderer import (
+    IsometricTileGraphicsItem,
+    IsometricWorldView,
+    LanternMarkerItem,
+    TileAtlas,
+)
+from moonlight.ui.world_view import WorldViewWidget
 
 __all__ = [
     "CLOUD_PLACEHOLDER_BADGE_TEXT",
     "COLORS",
+    "IsometricTileGraphicsItem",
+    "IsometricWorldView",
+    "LanternMarkerItem",
     "RADII",
     "SPACING",
     "TYPE",
@@ -68,10 +85,17 @@ __all__ = [
     "RightSidePanelWidget",
     "SentToModelWidget",
     "StorageViewWidget",
+    "TileAtlas",
+    "TileClassification",
+    "TileMaterial",
+    "WorldModel",
+    "WorldTile",
+    "WorldViewWidget",
     "build_qss",
     "get_confidence_chip_style",
     "get_event_bus",
     "get_fallback_badge_style",
     "get_provider_badge",
     "get_risk_chip_style",
+    "material_for_classification",
 ]

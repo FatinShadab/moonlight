@@ -1,0 +1,45 @@
+{
+  "version": "1.0.0",
+  "image": "spritesheet.png",
+  "tile_size": {
+    "width": 32,
+    "height": 32
+  },
+  "materials": {
+    "dirt": {
+      "x": 0,
+      "y": 0,
+      "width": 32,
+      "height": 32,
+      "description": "Clearly safe storage paths and verified harmless processes"
+    },
+    "grass": {
+      "x": 256,
+      "y": 64,
+      "width": 32,
+      "height": 32,
+      "description": "Review first paths and processes requiring analyst confirmation"
+    },
+    "stone": {
+      "x": 320,
+      "y": 160,
+      "width": 32,
+      "height": 32,
+      "description": "Protected system paths and do-not-touch critical components"
+    },
+    "water": {
+      "x": 0,
+      "y": 320,
+      "width": 32,
+      "height": 32,
+      "description": "Unavailable, missing, or error evidence items (fog/water)"
+    },
+    "fog": {
+      "x": 192,
+      "y": 288,
+      "width": 32,
+      "height": 32,
+      "description": "Unrevealed deep fog tile"
+    }
+  }
+}
