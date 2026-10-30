@@ -252,6 +252,15 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 - Polished information architecture: de-escalated benign hypothesis likelihood from alarming red to info cyan/teal, removed duplicate plain-text risk labels, and parsed raw derivation strings into structured metadata.
 - Validation: all 533 tests pass across the suite; Ruff format, Ruff lint, and strict mypy pass cleanly with 0 errors across 95 files.
 
+## 2026-10-30 — Settings page & provider configuration
+
+- Implemented comprehensive, local-first settings management (`moonlight.core.config.AppSettings`) with support for Meta Model API keys and models, Ollama Cloud API keys, base URLs, custom host allowlist, and live model discovery via `GET /api/tags`.
+- Added configurable privacy minimization limits (`max_command_chars`, `max_evidence_items`, and custom identity aliases) and storage growth attribution thresholds (`min_growth_bytes_per_second`, `max_endpoint_skew_seconds`).
+- Added transparent read-only policy safeguard review card detailing Recycle-Bin-only guarantees and protected system path policies.
+- Built `SettingsViewWidget` integrated into `MoonlightMainWindow` via a new Settings rail button (`settings.svg`), responsive scroll cards, password show/hide toggles, asynchronous background model fetching worker, and live controller synchronization.
+- Secrets protection: API keys and local settings persist to gitignored `state/settings.json` with `.env` / environment variable fallback, never logged or exposed.
+- Validation: 551 tests pass across the entire suite; Ruff lint/format clean repo-wide; strict mypy passes with 0 errors across 99 source files.
+
 ## Planned evaluation
 
 The [PRD](Moonlight%20Product%20Requirements%20Document.md) defines process and storage rule metrics, citation coverage, schema validity, ablations, and robustness scenarios. Results will include the labeled-set size and reproduction method when measurements exist. No performance or safety metric is claimed yet.

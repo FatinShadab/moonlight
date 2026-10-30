@@ -41,6 +41,7 @@ def get_icon(name: str) -> QIcon:
             "refresh": QStyle.StandardPixmap.SP_BrowserReload,
             "chevron_right": QStyle.StandardPixmap.SP_ArrowRight,
             "world": QStyle.StandardPixmap.SP_DesktopIcon,
+            "settings": QStyle.StandardPixmap.SP_FileDialogContentsView,
         }
         if name in std_mapping:
             pix = style.standardPixmap(std_mapping[name])

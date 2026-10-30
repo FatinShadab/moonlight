@@ -6,6 +6,7 @@ Features:
 - Live mode with read-only collection, mock by default (air-gapped safety).
 - UI-layer emission of InvestigationEvents wrapping engine return values.
 - Seamless coordination between views, policy layer, and reasoning orchestrator.
+- Dynamic provider configuration through AppSettings.
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ from typing import Any
 from PySide6.QtCore import QObject, QThread, Signal
 
 from moonlight.collectors.bundle import collect_evidence
+from moonlight.core.config import AppSettings, load_settings
 from moonlight.core.evidence import EvidenceBundle
 from moonlight.eval.scenarios import (
     ProcessScenario,
@@ -25,13 +27,18 @@ from moonlight.eval.scenarios import (
     load_expected_reports,
 )
 from moonlight.minimizer import PrivacyContext, minimize_evidence
-from moonlight.minimizer.models import MinimizationResult
+from moonlight.minimizer.models import MinimizationResult, MinimizerSettings
 from moonlight.policy.actions import ProposedAction
 from moonlight.policy.engine import validate_proposed_action
 from moonlight.policy.protected import classify_path_storage
 from moonlight.reasoning.models import Report
 from moonlight.reasoning.orchestrator import ReasoningOrchestrator
-from moonlight.reasoning.provider import MockProvider, ReportProvider
+from moonlight.reasoning.provider import (
+    MockProvider,
+    ReasoningConfig,
+    ReportProvider,
+    get_provider,
+)
 from moonlight.rules.process import ProcessRuleReport, evaluate_process
 from moonlight.ui.events import EventBus, get_event_bus
 
@@ -63,6 +70,7 @@ class InvestigationWorker(QThread):
         live_pid: int | None = None,
         event_bus: EventBus | None = None,
         custom_provider: ReportProvider | None = None,
+        settings: AppSettings | None = None,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
@@ -72,6 +80,7 @@ class InvestigationWorker(QThread):
         self.live_pid = live_pid
         self.bus = event_bus if event_bus is not None else get_event_bus()
         self.custom_provider = custom_provider
+        self.settings = settings or load_settings()
 
     def run(self) -> None:
         try:
@@ -180,7 +189,25 @@ class InvestigationWorker(QThread):
         self.status_message.emit("Minimizing evidence and generating redaction log...")
         min_result: MinimizationResult | None = None
         if bundles:
-            min_result = minimize_evidence(tuple(bundles), context=PrivacyContext())
+            custom_aliases = tuple(
+                a.strip()
+                for a in self.settings.custom_username_aliases.split(",")
+                if a.strip()
+            )
+            privacy_context = (
+                PrivacyContext(usernames=custom_aliases)
+                if custom_aliases
+                else PrivacyContext()
+            )
+            minimizer_settings = MinimizerSettings(
+                max_command_chars=self.settings.max_command_chars,
+                max_evidence_items=self.settings.max_evidence_items,
+            )
+            min_result = minimize_evidence(
+                tuple(bundles),
+                context=privacy_context,
+                settings=minimizer_settings,
+            )
             p_len = len(min_result.payload_bytes())
             r_count = len(min_result.redaction_log)
             p_msg = (
@@ -204,6 +231,21 @@ class InvestigationWorker(QThread):
             severity="info",
         )
 
+        valid_prov: Any = (
+            self.provider_name
+            if self.provider_name in ("mock", "ollama-cloud", "meta")
+            else "mock"
+        )
+        reasoning_cfg = ReasoningConfig(
+            provider=valid_prov,
+            timeout=self.settings.timeout,
+            max_retries=self.settings.max_retries,
+            enable_cache=self.settings.enable_cache,
+            ollama_base_url=self.settings.ollama_base_url,
+            ollama_model=self.settings.ollama_model,
+            allow_custom_host=self.settings.allow_custom_host,
+        )
+
         provider: ReportProvider
         if self.custom_provider is not None:
             provider = self.custom_provider
@@ -214,11 +256,23 @@ class InvestigationWorker(QThread):
                 provider = MockProvider(replay_sequence=[reports[sid]])
             else:
                 provider = MockProvider()
+        elif self.provider_name == "ollama-cloud":
+            provider = get_provider(
+                config=reasoning_cfg,
+                api_key=self.settings.ollama_api_key or None,
+                model=self.settings.ollama_model or None,
+                base_url=self.settings.ollama_base_url or None,
+                allow_custom_host=self.settings.allow_custom_host,
+            )
+        elif self.provider_name == "meta":
+            provider = get_provider(
+                config=reasoning_cfg,
+                provider="meta",
+            )
         else:
-            # Fallback to MockProvider for safety if meta/ollama not configured
             provider = MockProvider()
 
-        orchestrator = ReasoningOrchestrator(provider=provider)
+        orchestrator = ReasoningOrchestrator(provider=provider, config=reasoning_cfg)
         report: Report | None = None
         if bundles:
             report = orchestrator.investigate(
@@ -299,14 +353,25 @@ class InvestigationController(QObject):
     def __init__(
         self,
         event_bus: EventBus | None = None,
+        settings: AppSettings | None = None,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
         self.bus = event_bus if event_bus is not None else get_event_bus()
-        self._mode: str = "replay"  # "replay" or "live"
-        self._provider_name: str = "mock"  # "mock", "ollama-cloud", "meta"
+        self._settings = settings or load_settings()
+        self._mode: str = self._settings.default_mode
+        self._provider_name: str = self._settings.provider
         self._current_worker: InvestigationWorker | None = None
         self._custom_provider: ReportProvider | None = None
+
+    @property
+    def settings(self) -> AppSettings:
+        return self._settings
+
+    def apply_settings(self, settings: AppSettings) -> None:
+        """Apply newly updated application settings."""
+        self._settings = settings
+        self._provider_name = settings.provider
 
     @property
     def mode(self) -> str:
@@ -347,6 +412,7 @@ class InvestigationController(QObject):
             live_pid=live_pid,
             event_bus=self.bus,
             custom_provider=self._custom_provider,
+            settings=self._settings,
         )
         self._current_worker = worker
 

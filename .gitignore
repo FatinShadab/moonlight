@@ -156,6 +156,8 @@ activemq-data/
 .envrc
 .venv
 .tmp/
+state/*.json
+state/settings.json
 env/
 venv/
 ENV/

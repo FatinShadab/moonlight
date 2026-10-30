@@ -57,6 +57,10 @@ def test_main_window_layout_and_navigation(qapp: QApplication) -> None:
     assert win.world_view_btn is not None
     assert win.world_view_btn.isEnabled() is True
 
+    # Settings navigation slot exists and is enabled
+    assert win.settings_btn is not None
+    assert win.settings_btn.isEnabled() is True
+
     # Top bar elements exist
     assert win.btn_replay.isChecked() is True
     assert win.btn_live.isChecked() is False
@@ -78,6 +82,9 @@ def test_main_window_layout_and_navigation(qapp: QApplication) -> None:
 
     win._select_nav_view(4)
     assert win.stacked_views.currentIndex() == 4
+
+    win._select_nav_view(6)
+    assert win.stacked_views.currentIndex() == 6
 
     win.close()
     win.deleteLater()
@@ -466,4 +473,29 @@ def test_approvals_panel_repeated_set_actions_preserves_empty_label(
 
     panel.close()
     panel.deleteLater()
+    qapp.processEvents()
+
+
+def test_settings_save_updates_main_window_and_controller(
+    qapp: QApplication,
+) -> None:
+    from moonlight.core.config import AppSettings
+
+    bus = EventBus()
+    win = MoonlightMainWindow(event_bus=bus)
+    win.show()
+
+    new_cfg = AppSettings(
+        provider="meta",
+        meta_api_key="sk-test-meta-123",
+        timeout=50.0,
+    )
+    win._on_settings_saved(new_cfg)
+
+    assert win.controller.provider_name == "meta"
+    assert win.provider_combo.currentText() == "meta"
+    assert win.provider_badge.isVisible() is False
+
+    win.close()
+    win.deleteLater()
     qapp.processEvents()

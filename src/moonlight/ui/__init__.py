@@ -27,6 +27,7 @@ from moonlight.ui.panels import (
     RightSidePanelWidget,
 )
 from moonlight.ui.review import ReportReviewWidget
+from moonlight.ui.settings_view import SettingsViewWidget
 from moonlight.ui.theme import (
     COLORS,
     RADII,
@@ -84,6 +85,7 @@ __all__ = [
     "ReportReviewWidget",
     "RightSidePanelWidget",
     "SentToModelWidget",
+    "SettingsViewWidget",
     "StorageViewWidget",
     "TileAtlas",
     "TileClassification",
