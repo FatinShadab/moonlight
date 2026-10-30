@@ -24,7 +24,7 @@ def get_provider_badge(provider: str | None) -> str | None:
 
 
 class ProviderBadgeWidget(QLabel):
-    """Badge label showing 'cloud placeholder model' when provider is not meta."""
+    """Badge label showing placeholder when provider is not meta."""
 
     def __init__(self, provider: str = "ollama-cloud", parent: Any = None) -> None:
         super().__init__(parent)
@@ -44,9 +44,9 @@ class ProviderBadgeWidget(QLabel):
             self.setText(badge_text)
             self.setVisible(True)
             self.setStyleSheet(
-                "background-color: #fef3c7; color: #92400e; "
-                "font-weight: 600; font-size: 11px; padding: 2px 8px; "
-                "border-radius: 4px; border: 1px solid #f59e0b;"
+                "background-color: rgba(245, 158, 11, 0.12); color: #fbbf24; "
+                "font-weight: 600; font-size: 11px; padding: 3px 8px; "
+                "border-radius: 6px; border: 1px solid rgba(245, 158, 11, 0.35);"
             )
         else:
             self.setText("")

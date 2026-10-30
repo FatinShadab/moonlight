@@ -1,14 +1,15 @@
 """Main review window for Moonlight investigation and remediation interface.
 
 Features:
-- Left navigation rail: Processes, Storage, Reports, Sent to model, Policy log, World.
+- Left navigation rail: Processes, Storage, Reports, Model, Policy log, World, Settings.
 - Extensible structure for optional isometric World View device map.
 - Top bar with Replay / Live toggle, provider badge, scenario selector, run trigger.
-- Central stacked views: Processes, Storage, Reports, SentToModel, PolicyLog, WorldView.
+- Central views: Processes, Storage, Reports, Model, Policy, World, Settings.
 - Right side panel with Activity timeline and Approvals queue.
 - Interactive cross-linking: clicking citations jumps to matching evidence rows.
 - Consent dialog flow: confirmation token held in memory, policy-gated execution.
 - Background worker execution preventing UI freezes.
+- Settings view for provider, API keys, models, privacy, and heuristics.
 """
 
 from __future__ import annotations
@@ -18,17 +19,21 @@ from typing import Any
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QButtonGroup,
     QComboBox,
     QFrame,
     QHBoxLayout,
     QLabel,
     QMainWindow,
     QPushButton,
+    QSizePolicy,
+    QSplitter,
     QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
 
+from moonlight.core.config import AppSettings, load_settings
 from moonlight.eval.scenarios import load_all_scenarios
 from moonlight.policy.actions import ExecutionResult, ProposedAction
 from moonlight.policy.audit import PolicyAuditLogger
@@ -42,6 +47,7 @@ from moonlight.ui.events import EventBus, get_event_bus
 from moonlight.ui.icons import get_icon
 from moonlight.ui.panels import RightSidePanelWidget
 from moonlight.ui.review import ReportReviewWidget
+from moonlight.ui.settings_view import SettingsViewWidget
 from moonlight.ui.theme import COLORS, SPACING, build_qss
 from moonlight.ui.views import (
     PolicyLogWidget,
@@ -90,9 +96,12 @@ class MoonlightMainWindow(QMainWindow):
         self.audit_logger = audit_logger or PolicyAuditLogger()
         self._hooks = dict(hooks) if hooks else {}
         self._scenarios_map: dict[str, Any] = {}
+        self.app_settings: AppSettings = load_settings()
 
         # Controller managing async execution
-        self.controller = InvestigationController(event_bus=self.bus, parent=self)
+        self.controller = InvestigationController(
+            event_bus=self.bus, settings=self.app_settings, parent=self
+        )
         self.controller.investigation_finished.connect(self._on_investigation_finished)
         self.controller.status_changed.connect(self._on_status_changed)
 
@@ -114,7 +123,7 @@ class MoonlightMainWindow(QMainWindow):
         self.top_bar = self._create_top_bar()
         root_layout.addWidget(self.top_bar)
 
-        # 2. Main Body: Left Rail + Central Content Stack + Right Side Panel
+        # 2. Main Body: Left Rail + Responsive Horizontal QSplitter
         body_layout = QHBoxLayout()
         body_layout.setContentsMargins(0, 0, 0, 0)
         body_layout.setSpacing(0)
@@ -156,7 +165,10 @@ class MoonlightMainWindow(QMainWindow):
         self.world_view.citation_clicked.connect(self._on_citation_clicked)
         self.stacked_views.addWidget(self.world_view)
 
-        body_layout.addWidget(self.stacked_views, stretch=1)
+        # View 6: Settings & Preferences
+        self.settings_view = SettingsViewWidget(settings=self.app_settings, parent=self)
+        self.settings_view.settings_saved.connect(self._on_settings_saved)
+        self.stacked_views.addWidget(self.settings_view)
 
         # Right Side Panel (Activity Timeline + Approvals)
         self.side_panel = RightSidePanelWidget(
@@ -166,8 +178,18 @@ class MoonlightMainWindow(QMainWindow):
         )
         self.side_panel.citation_clicked.connect(self._on_citation_clicked)
         self.side_panel.action_executed.connect(self._on_action_executed)
-        body_layout.addWidget(self.side_panel)
 
+        # Horizontal Splitter between central workspace and right dock
+        self.content_splitter = QSplitter(Qt.Orientation.Horizontal)
+        self.content_splitter.setObjectName("content_splitter")
+        self.content_splitter.addWidget(self.stacked_views)
+        self.content_splitter.addWidget(self.side_panel)
+        self.content_splitter.setStretchFactor(0, 1)
+        self.content_splitter.setStretchFactor(1, 0)
+        self.content_splitter.setCollapsible(0, False)
+        self.content_splitter.setCollapsible(1, False)
+
+        body_layout.addWidget(self.content_splitter, stretch=1)
         root_layout.addLayout(body_layout)
 
         # Set default active view to Reports (View 2)
@@ -177,8 +199,8 @@ class MoonlightMainWindow(QMainWindow):
         bar = QFrame()
         bar.setObjectName("top_bar")
         layout = QHBoxLayout(bar)
-        layout.setContentsMargins(SPACING.md, SPACING.sm, SPACING.md, SPACING.sm)
-        layout.setSpacing(SPACING.md)
+        layout.setContentsMargins(SPACING.md, SPACING.xs, SPACING.md, SPACING.xs)
+        layout.setSpacing(SPACING.sm)
 
         # App branding title
         brand_lbl = QLabel("MOONLIGHT")
@@ -193,48 +215,69 @@ class MoonlightMainWindow(QMainWindow):
         sep1.setStyleSheet(f"color: {COLORS.border_subtle}; font-weight: 300;")
         layout.addWidget(sep1)
 
-        # Mode toggle: Replay vs Live
-        mode_box = QHBoxLayout()
-        mode_box.setSpacing(2)
+        # Mode toggle segmented control: Replay vs Live
+        mode_frame = QFrame()
+        mode_frame.setObjectName("mode_toggle_container")
+        mode_layout = QHBoxLayout(mode_frame)
+        mode_layout.setContentsMargins(2, 2, 2, 2)
+        mode_layout.setSpacing(2)
+
         self.btn_replay = QPushButton("Replay")
         self.btn_replay.setObjectName("btn_replay")
         self.btn_replay.setCheckable(True)
         self.btn_replay.setChecked(True)
-        self.btn_replay.clicked.connect(lambda: self._set_mode("replay"))
-        mode_box.addWidget(self.btn_replay)
+        self.btn_replay.setCursor(Qt.CursorShape.PointingHandCursor)
 
         self.btn_live = QPushButton("Live")
         self.btn_live.setObjectName("btn_live")
         self.btn_live.setCheckable(True)
         self.btn_live.setChecked(False)
+        self.btn_live.setCursor(Qt.CursorShape.PointingHandCursor)
+
+        self.mode_group = QButtonGroup(self)
+        self.mode_group.setExclusive(True)
+        self.mode_group.addButton(self.btn_replay)
+        self.mode_group.addButton(self.btn_live)
+
+        self.btn_replay.clicked.connect(lambda: self._set_mode("replay"))
         self.btn_live.clicked.connect(lambda: self._set_mode("live"))
-        mode_box.addWidget(self.btn_live)
 
-        layout.addLayout(mode_box)
+        mode_layout.addWidget(self.btn_replay)
+        mode_layout.addWidget(self.btn_live)
+        layout.addWidget(mode_frame)
 
-        # Scenario Selector (Active in Replay Mode)
+        # Scenario / Target Selector (Active in Replay Mode, responsive)
         self.scenario_combo = QComboBox()
         self.scenario_combo.setObjectName("scenario_selector")
-        self.scenario_combo.setMinimumWidth(240)
+        self.scenario_combo.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
+        self.scenario_combo.setMinimumWidth(180)
+        self.scenario_combo.setMaximumWidth(340)
         self.scenario_combo.currentIndexChanged.connect(self._on_scenario_changed)
         layout.addWidget(self.scenario_combo)
 
-        # Provider Selector
+        # Provider Selector & Badge grouped cleanly
+        prov_box = QHBoxLayout()
+        prov_box.setSpacing(SPACING.xs)
         prov_lbl = QLabel("Provider:")
         prov_lbl.setStyleSheet(f"color: {COLORS.text_muted}; font-size: 11px;")
-        layout.addWidget(prov_lbl)
+        prov_box.addWidget(prov_lbl)
 
         self.provider_combo = QComboBox()
         self.provider_combo.setObjectName("provider_selector")
         self.provider_combo.addItems(["mock", "ollama-cloud", "meta"])
+        init_prov_idx = self.provider_combo.findText(self.app_settings.provider)
+        if init_prov_idx >= 0:
+            self.provider_combo.setCurrentIndex(init_prov_idx)
         self.provider_combo.currentTextChanged.connect(self._on_provider_changed)
-        layout.addWidget(self.provider_combo)
+        prov_box.addWidget(self.provider_combo)
 
-        # Provider Badge
-        self.provider_badge = ProviderBadgeWidget(provider="mock")
-        layout.addWidget(self.provider_badge)
+        self.provider_badge = ProviderBadgeWidget(provider=self.app_settings.provider)
+        prov_box.addWidget(self.provider_badge)
+        layout.addLayout(prov_box)
 
-        layout.addStretch()
+        layout.addStretch(1)
 
         # Status text
         self.status_lbl = QLabel("Ready")
@@ -242,13 +285,20 @@ class MoonlightMainWindow(QMainWindow):
         self.status_lbl.setStyleSheet(
             f"color: {COLORS.text_muted}; font-size: 11px; font-style: italic;"
         )
+        self.status_lbl.setSizePolicy(
+            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed
+        )
         layout.addWidget(self.status_lbl)
 
-        # Investigate / Run Button
+        # Investigate / Run Button (Primary prominent CTA)
         self.run_btn = QPushButton("Investigate")
         self.run_btn.setObjectName("run_investigation_btn")
         self.run_btn.setProperty("primary", "true")
         self.run_btn.setIcon(get_icon("refresh"))
+        self.run_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.run_btn.setToolTip("Execute grounded investigation on selected target")
+        self.run_btn.setMinimumWidth(115)
+        self.run_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.run_btn.clicked.connect(self.trigger_investigation)
         layout.addWidget(self.run_btn)
 
@@ -257,6 +307,7 @@ class MoonlightMainWindow(QMainWindow):
     def _create_nav_rail(self) -> QFrame:
         rail = QFrame()
         rail.setObjectName("nav_rail")
+        rail.setFixedWidth(200)
         layout = QVBoxLayout(rail)
         layout.setContentsMargins(SPACING.sm, SPACING.md, SPACING.sm, SPACING.md)
         layout.setSpacing(SPACING.xs)
@@ -299,6 +350,20 @@ class MoonlightMainWindow(QMainWindow):
         self.world_view_btn.clicked.connect(lambda _c=False: self._select_nav_view(5))
         layout.addWidget(self.world_view_btn)
 
+        # Configuration Navigation Section & Settings Button
+        layout.addSpacing(SPACING.md)
+        config_header = QLabel("CONFIGURATION")
+        config_header.setStyleSheet(
+            f"font-size: 10px; font-weight: 700; color: {COLORS.text_muted}; "
+            f"letter-spacing: 1px; padding: 0 10px 4px 10px;"
+        )
+        layout.addWidget(config_header)
+
+        self.settings_btn = NavButton("Settings", "settings", 6)
+        self.settings_btn.setObjectName("btn_settings")
+        self.settings_btn.clicked.connect(lambda _c=False: self._select_nav_view(6))
+        layout.addWidget(self.settings_btn)
+
         layout.addStretch()
 
         # Version stamp
@@ -317,6 +382,8 @@ class MoonlightMainWindow(QMainWindow):
             btn.setChecked(btn.view_index == index)
         if hasattr(self, "world_view_btn"):
             self.world_view_btn.setChecked(index == 5)
+        if hasattr(self, "settings_btn"):
+            self.settings_btn.setChecked(index == 6)
 
     def _set_mode(self, mode: str) -> None:
         """Toggle between Replay mode and Live mode."""
@@ -326,6 +393,8 @@ class MoonlightMainWindow(QMainWindow):
                 provider_name=self.controller.provider_name, parent=self
             )
             if not dlg.exec():
+                self.btn_replay.setChecked(self.controller.mode == "replay")
+                self.btn_live.setChecked(self.controller.mode == "live")
                 return
 
         self.controller.mode = mode
@@ -348,6 +417,26 @@ class MoonlightMainWindow(QMainWindow):
         self.controller.provider_name = provider
         self.provider_badge.update_provider(provider)
         self.status_lbl.setText(f"Provider: {provider}")
+
+        # Sync settings view if visible
+        if hasattr(self, "settings_view"):
+            idx = self.settings_view.combo_provider.findText(provider)
+            if idx >= 0:
+                self.settings_view.combo_provider.blockSignals(True)
+                self.settings_view.combo_provider.setCurrentIndex(idx)
+                self.settings_view.combo_provider.blockSignals(False)
+
+    def _on_settings_saved(self, settings: AppSettings) -> None:
+        """Handle settings saved signal from SettingsViewWidget."""
+        self.app_settings = settings
+        self.controller.apply_settings(settings)
+        self.provider_combo.blockSignals(True)
+        idx = self.provider_combo.findText(settings.provider)
+        if idx >= 0:
+            self.provider_combo.setCurrentIndex(idx)
+        self.provider_combo.blockSignals(False)
+        self.provider_badge.update_provider(settings.provider)
+        self.status_lbl.setText(f"Settings saved. Provider: {settings.provider}")
 
     def _load_replay_scenarios(self) -> None:
         """Load labeled scenarios into replay dropdown."""

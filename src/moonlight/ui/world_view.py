@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QCheckBox,
     QFrame,
@@ -78,7 +78,7 @@ class WorldViewWidget(QWidget):
 
     def _init_ui(self) -> None:
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(SPACING.md, SPACING.md, SPACING.md, SPACING.md)
         layout.setSpacing(SPACING.sm)
 
         # 1. Top control toolbar
@@ -101,7 +101,7 @@ class WorldViewWidget(QWidget):
             f"background-color: {COLORS.accent_surface}; "
             f"color: {COLORS.accent_primary}; "
             f"border: 1px solid {COLORS.accent_border}; "
-            f"border-radius: {RADII.pill}px; "
+            f"border-radius: {RADII.md}px; "
             f"font-weight: 700; font-size: 11px; padding: 2px 10px;"
         )
         tb_layout.addWidget(self.lit_chip)
@@ -117,7 +117,7 @@ class WorldViewWidget(QWidget):
         self.chk_reduce_motion.toggled.connect(self._on_reduce_motion_toggled)
         tb_layout.addWidget(self.chk_reduce_motion)
 
-        # Zoom buttons
+        # Zoom buttons with dedicated class and fixed dimensions
         zoom_box = QHBoxLayout()
         zoom_box.setSpacing(SPACING.xs)
         z_lbl = QLabel("Zoom:")
@@ -127,7 +127,10 @@ class WorldViewWidget(QWidget):
         for z in (1, 2, 3):
             btn = QPushButton(f"{z}x")
             btn.setObjectName(f"zoom_btn_{z}")
-            btn.setFixedSize(30, 24)
+            btn.setProperty("class", "icon-btn")
+            btn.setFixedSize(28, 28)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.setToolTip(f"Zoom {z * 100}% ({z}x)")
             btn.clicked.connect(
                 lambda _checked=False, level=z: self.view.apply_zoom(level)
             )
@@ -168,8 +171,8 @@ class WorldViewWidget(QWidget):
             f"background-color: {COLORS.bg_surface}; "
             f"color: {COLORS.text_muted}; "
             f"border: 1px solid {COLORS.border_subtle}; "
-            f"border-radius: {RADII.pill}px; "
-            f"font-weight: 700; font-size: 10px; padding: 1px 8px;"
+            f"border-radius: {RADII.md}px; "
+            f"font-weight: 700; font-size: 10px; padding: 2px 8px;"
         )
         header_row.addWidget(self.category_chip)
         header_row.addStretch()
@@ -280,8 +283,8 @@ class WorldViewWidget(QWidget):
 
         self.category_chip.setText(f"{mat} • {cat}")
         self.category_chip.setStyleSheet(
-            f"{chip_style} border-radius: {RADII.pill}px; "
-            f"font-weight: 700; font-size: 10px; padding: 1px 8px;"
+            f"{chip_style} border-radius: {RADII.md}px; "
+            f"font-weight: 700; font-size: 10px; padding: 2px 8px;"
         )
 
         desc = tile.excerpt or (

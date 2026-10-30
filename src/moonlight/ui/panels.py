@@ -4,7 +4,8 @@ Features:
 - ActivityTimelineWidget: reactive stream of InvestigationEvents from EventBus.
 - ApprovalsPanelWidget: pending action recommendations, policy validation chips,
   and dry-run preview launcher.
-- RightSidePanelWidget: dual-tab container holding Activity and Approvals.
+- RightSidePanelWidget: dual-tab container holding Activity and Approvals with
+  guaranteed non-collapsing dimensions and zero horizontal overflow.
 """
 
 from __future__ import annotations
@@ -99,6 +100,7 @@ class ActivityItemWidget(QFrame):
         # Event kind label
         kind_clean = event.kind.replace("_", " ").title()
         kind_lbl = QLabel(kind_clean)
+        kind_lbl.setWordWrap(True)
         kind_lbl.setStyleSheet(
             f"color: {c.text_secondary}; font-weight: 600; font-size: 11px;"
         )
@@ -110,6 +112,7 @@ class ActivityItemWidget(QFrame):
         # Subject if present
         if event.subject:
             sub_lbl = QLabel(f"Subject: {event.subject}")
+            sub_lbl.setWordWrap(True)
             sub_lbl.setStyleSheet(
                 f"color: {c.accent_primary}; font-weight: 600; font-size: 12px;"
             )
@@ -118,24 +121,45 @@ class ActivityItemWidget(QFrame):
         # Message
         msg_lbl = QLabel(event.message)
         msg_lbl.setWordWrap(True)
-        msg_lbl.setStyleSheet(f"color: {c.text_primary}; font-size: 12px;")
+        msg_lbl.setStyleSheet(
+            f"color: {c.text_primary}; font-size: 12px; line-height: 1.3;"
+        )
         layout.addWidget(msg_lbl)
 
-        # Citations if present
+        # Citations if present (compact with elided display and full tooltip)
         if event.evidence_ids:
-            cit_row = QHBoxLayout()
-            cit_row.setSpacing(SPACING.xs)
-            c_title = QLabel("Citations:")
-            c_title.setStyleSheet(f"color: {c.text_muted}; font-size: 11px;")
-            cit_row.addWidget(c_title)
-            for cid in event.evidence_ids:
-                chip = CitationButton(cid)
+            cit_box = QVBoxLayout()
+            cit_box.setSpacing(2)
+
+            cit_label = QLabel("Citations:")
+            cit_label.setStyleSheet(
+                f"color: {c.text_muted}; font-size: 11px; font-weight: 600;"
+            )
+            cit_box.addWidget(cit_label)
+
+            row = QHBoxLayout()
+            row.setSpacing(SPACING.xs)
+            for idx, cid in enumerate(event.evidence_ids):
+                # Format short display name for long evidence IDs
+                display_name = cid
+                if len(cid) > 22:
+                    display_name = cid[:12] + "…" + cid[-7:]
+                chip = CitationButton(display_name)
+                chip.setToolTip(f"Jump to evidence item: {cid}")
                 chip.clicked.connect(
                     lambda _checked=False, ev_id=cid: self.citation_clicked.emit(ev_id)
                 )
-                cit_row.addWidget(chip)
-            cit_row.addStretch()
-            layout.addLayout(cit_row)
+                row.addWidget(chip)
+                # Create wrapped rows if more than 2 citations
+                if (idx + 1) % 2 == 0 and idx + 1 < len(event.evidence_ids):
+                    row.addStretch()
+                    cit_box.addLayout(row)
+                    row = QHBoxLayout()
+                    row.setSpacing(SPACING.xs)
+
+            row.addStretch()
+            cit_box.addLayout(row)
+            layout.addLayout(cit_box)
 
 
 class ActivityTimelineWidget(QWidget):
@@ -176,6 +200,9 @@ class ActivityTimelineWidget(QWidget):
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll_area.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
 
         self.container = QWidget()
         self.events_layout = QVBoxLayout(self.container)
@@ -224,15 +251,19 @@ class ActivityTimelineWidget(QWidget):
     def clear_events(self) -> None:
         """Clear all events from the timeline."""
         self._events.clear()
-        while self.events_layout.count() > 0:
-            layout_item = self.events_layout.takeAt(0)
-            if layout_item is not None:
-                w = layout_item.widget()
-                if w is not None:
+        for i in reversed(range(self.events_layout.count())):
+            layout_item = self.events_layout.itemAt(i)
+            if layout_item is None:
+                continue
+            w = layout_item.widget()
+            if w is not None:
+                if w is not self.empty_label:
+                    self.events_layout.removeWidget(w)
                     w.deleteLater()
+            elif layout_item.spacerItem() is not None:
+                self.events_layout.takeAt(i)
 
         self.empty_label.setVisible(True)
-        self.events_layout.addWidget(self.empty_label)
         self.events_layout.addStretch()
         self.count_label.setText("0 Events")
 
@@ -263,6 +294,7 @@ class ApprovalItemWidget(QFrame):
 
         top_row = QHBoxLayout()
         act_title = QLabel(action_rec.action_id.replace("_", " ").upper())
+        act_title.setWordWrap(True)
         act_title.setStyleSheet(
             f"color: {c.accent_primary}; font-weight: 700; font-size: 12px;"
         )
@@ -297,7 +329,9 @@ class ApprovalItemWidget(QFrame):
 
         reason_lbl = QLabel(action_rec.reason)
         reason_lbl.setWordWrap(True)
-        reason_lbl.setStyleSheet(f"color: {c.text_secondary}; font-size: 12px;")
+        reason_lbl.setStyleSheet(
+            f"color: {c.text_secondary}; font-size: 12px; line-height: 1.3;"
+        )
         layout.addWidget(reason_lbl)
 
         # Action button or executed badge
@@ -306,13 +340,38 @@ class ApprovalItemWidget(QFrame):
             self.review_btn = QPushButton("Review & Consent")
             self.review_btn.setObjectName("review_approval_btn")
             self.review_btn.setProperty("primary", "true")
-            self.review_btn.setStyleSheet("font-size: 11px; padding: 4px 10px;")
+            self.review_btn.setCursor(Qt.CursorShape.PointingHandCursor)
             self.review_btn.clicked.connect(self._open_preview_dialog)
             btn_row.addWidget(self.review_btn)
 
-        self.status_label = QLabel("Pending Review")
-        self.status_label.setStyleSheet(f"color: {c.text_muted}; font-size: 11px;")
-        btn_row.addWidget(self.status_label)
+            self.status_label = QLabel("Pending Review")
+            self.status_label.setStyleSheet(f"color: {c.text_muted}; font-size: 11px;")
+            btn_row.addWidget(self.status_label)
+        else:
+            self.blocked_btn = QPushButton("Action Blocked")
+            self.blocked_btn.setEnabled(False)
+            self.blocked_btn.setStyleSheet(
+                f"background-color: {c.bg_surface_alt}; color: {c.text_muted}; "
+                f"font-size: 11px; padding: 4px 10px; "
+                f"border: 1px solid {c.border_subtle};"
+            )
+            rej = (
+                str(decision.rejection_reason)
+                if decision.rejection_reason
+                else "Blocked by policy rule"
+            )
+            tooltip_msg = f"Policy enforcement: {rej}"
+            self.blocked_btn.setToolTip(tooltip_msg)
+            btn_row.addWidget(self.blocked_btn)
+
+            disp_rej = rej[:28] + "…" if len(rej) > 28 else rej
+            self.status_label = QLabel(disp_rej)
+            self.status_label.setToolTip(rej)
+            self.status_label.setStyleSheet(
+                f"color: {c.risk_high_text}; font-size: 10px;"
+            )
+            btn_row.addWidget(self.status_label)
+
         btn_row.addStretch()
         layout.addLayout(btn_row)
 
@@ -325,8 +384,9 @@ class ApprovalItemWidget(QFrame):
         if dialog.exec():
             res = dialog.execution_result
             if res and res.success:
-                self.review_btn.setEnabled(False)
-                self.review_btn.setText("Executed")
+                if hasattr(self, "review_btn"):
+                    self.review_btn.setEnabled(False)
+                    self.review_btn.setText("Executed")
                 self.status_label.setText("✓ Executed")
                 self.status_label.setStyleSheet(
                     f"color: {COLORS.risk_low_text}; font-weight: 600;"
@@ -366,6 +426,9 @@ class ApprovalsPanelWidget(QWidget):
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll_area.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
 
         self.container = QWidget()
         self.items_layout = QVBoxLayout(self.container)
@@ -389,16 +452,20 @@ class ApprovalsPanelWidget(QWidget):
         report: Report | None = None,
     ) -> None:
         """Populate approvals panel with recommended actions from report."""
-        while self.items_layout.count() > 0:
-            layout_item = self.items_layout.takeAt(0)
-            if layout_item is not None:
-                w = layout_item.widget()
-                if w is not None:
+        for i in reversed(range(self.items_layout.count())):
+            layout_item = self.items_layout.itemAt(i)
+            if layout_item is None:
+                continue
+            w = layout_item.widget()
+            if w is not None:
+                if w is not self.empty_label:
+                    self.items_layout.removeWidget(w)
                     w.deleteLater()
+            elif layout_item.spacerItem() is not None:
+                self.items_layout.takeAt(i)
 
         if not actions:
             self.empty_label.setVisible(True)
-            self.items_layout.addWidget(self.empty_label)
             self.items_layout.addStretch()
             self.info_label.setText("0 Pending Actions")
             return
@@ -428,6 +495,15 @@ class RightSidePanelWidget(QTabWidget):
     ) -> None:
         super().__init__(parent)
         self.setObjectName("side_panel")
+
+        # Responsive dock constraints preventing collapse when empty
+        self.setMinimumWidth(320)
+        self.setMaximumWidth(420)
+
+        # Tab bar configuration: expanding tabs, no scroll arrows
+        tab_bar = self.tabBar()
+        tab_bar.setUsesScrollButtons(False)
+        tab_bar.setExpanding(True)
 
         self.activity_widget = ActivityTimelineWidget(event_bus=event_bus)
         self.activity_widget.citation_clicked.connect(self.citation_clicked)
