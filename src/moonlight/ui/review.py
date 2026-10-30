@@ -164,10 +164,19 @@ class ReportReviewWidget(QWidget):
 
     def _create_report_page(self) -> QWidget:
         """Create populated report cards container with top alignment."""
-        page = QWidget()
-        page_layout = QVBoxLayout(page)
-        page_layout.setContentsMargins(0, 0, 0, 0)
-        page_layout.setSpacing(SPACING.sm)
+        scroll = QScrollArea()
+        scroll.setObjectName("report_scroll_area")
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        self.sections_container = QWidget()
+        self.sections_layout = QVBoxLayout(self.sections_container)
+        self.sections_layout.setContentsMargins(
+            SPACING.md, SPACING.md, SPACING.md, SPACING.md
+        )
+        self.sections_layout.setSpacing(SPACING.sm)
+        self.sections_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         # Header card with risk tier, provider info, and placeholder badges
         self.header_card = QFrame()
@@ -226,23 +235,10 @@ class ReportReviewWidget(QWidget):
         )
         header_layout.addWidget(self.summary_label)
 
-        page_layout.addWidget(self.header_card)
-
-        # Scrollable sections for facts, hypotheses, actions (top-aligned)
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.Shape.NoFrame)
-
-        self.sections_container = QWidget()
-        self.sections_layout = QVBoxLayout(self.sections_container)
-        self.sections_layout.setContentsMargins(0, SPACING.sm, 0, 0)
-        self.sections_layout.setSpacing(SPACING.md)
-        self.sections_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.sections_layout.addWidget(self.header_card)
 
         scroll.setWidget(self.sections_container)
-        page_layout.addWidget(scroll, stretch=1)
-
-        return page
+        return scroll
 
     @property
     def report(self) -> Report | None:
@@ -298,13 +294,18 @@ class ReportReviewWidget(QWidget):
 
     def _rebuild_sections(self, report: Report) -> None:
         """Populate facts, hypotheses, actions, explanations cards."""
-        # Clear previous widgets in sections layout
-        while self.sections_layout.count() > 0:
-            layout_item = self.sections_layout.takeAt(0)
-            if layout_item is not None:
-                widget = layout_item.widget()
-                if widget is not None:
-                    widget.deleteLater()
+        # Clear previous dynamic section cards, preserving self.header_card
+        for i in reversed(range(self.sections_layout.count())):
+            layout_item = self.sections_layout.itemAt(i)
+            if layout_item is None:
+                continue
+            w = layout_item.widget()
+            if w is not None:
+                if w is not self.header_card:
+                    self.sections_layout.removeWidget(w)
+                    w.deleteLater()
+            elif layout_item.spacerItem() is not None:
+                self.sections_layout.takeAt(i)
 
         # Observed Facts Card
         if report.observed_facts:
