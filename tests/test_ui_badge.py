@@ -3,10 +3,7 @@
 from __future__ import annotations
 
 import os
-import sys
 from datetime import UTC, datetime
-
-import pytest
 
 # Ensure PySide6 runs headlessly in offscreen mode
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
@@ -27,14 +24,6 @@ from moonlight.ui.badge import (
     get_provider_badge,
 )
 from moonlight.ui.review import ReportReviewWidget
-
-
-@pytest.fixture(scope="session")
-def qapp() -> QApplication:
-    app = QApplication.instance()
-    if not isinstance(app, QApplication):
-        app = QApplication(sys.argv)
-    return app
 
 
 def test_get_provider_badge_logic() -> None:
