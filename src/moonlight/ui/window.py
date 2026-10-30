@@ -13,7 +13,7 @@ Features:
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Any
 
 from PySide6.QtCore import Qt
@@ -76,7 +76,7 @@ class MoonlightMainWindow(QMainWindow):
         self,
         event_bus: EventBus | None = None,
         audit_logger: PolicyAuditLogger | None = None,
-        hooks: dict[str, Callable[..., Any]] | None = None,
+        hooks: Mapping[str, Callable[..., Any]] | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -87,7 +87,7 @@ class MoonlightMainWindow(QMainWindow):
 
         self.bus = event_bus if event_bus is not None else get_event_bus()
         self.audit_logger = audit_logger or PolicyAuditLogger()
-        self._hooks = hooks or {}
+        self._hooks = dict(hooks) if hooks else {}
 
         # Controller managing async execution
         self.controller = InvestigationController(event_bus=self.bus, parent=self)

@@ -179,7 +179,7 @@ class ProcessesViewWidget(QWidget):
                 self.table.setItem(row_idx, 3, avail_item)
 
                 val_str = (
-                    json.dumps(item.value)
+                    json.dumps(item.value, default=str)
                     if item.value is not None
                     else f"({item.availability})"
                 )
