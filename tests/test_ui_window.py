@@ -15,7 +15,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QLabel, QPushButton
 
 from moonlight.core.evidence import (
     EvidenceBundle,
@@ -355,4 +355,87 @@ def test_no_ui_code_path_executes_action_without_dialog(qapp: QApplication) -> N
 
     win.close()
     win.deleteLater()
+    qapp.processEvents()
+
+
+def test_mode_toggle_segmented_control_exclusive(qapp: QApplication) -> None:
+    """Verify that Replay/Live mode toggle buttons are mutually exclusive."""
+    bus = EventBus()
+    win = MoonlightMainWindow(event_bus=bus)
+    win.show()
+
+    assert win.btn_replay.isChecked() is True
+    assert win.btn_live.isChecked() is False
+    assert win.mode_group.checkedButton() == win.btn_replay
+
+    win.btn_live.click()
+    assert win.btn_live.isChecked() is True
+    assert win.btn_replay.isChecked() is False
+    assert win.mode_group.checkedButton() == win.btn_live
+    assert win.controller.mode == "live"
+
+    win.btn_replay.click()
+    assert win.btn_replay.isChecked() is True
+    assert win.btn_live.isChecked() is False
+    assert win.mode_group.checkedButton() == win.btn_replay
+    assert win.controller.mode == "replay"
+
+    win.close()
+    win.deleteLater()
+    qapp.processEvents()
+
+
+def test_report_review_widget_empty_state_and_uncertainty_parsing(
+    qapp: QApplication,
+) -> None:
+    """Verify empty state trigger button and clean derivation parsing."""
+    from moonlight.ui.review import ReportReviewWidget
+
+    widget = ReportReviewWidget()
+    widget.show()
+
+    # Empty state page active initially
+    assert widget.stack.currentIndex() == 0
+
+    # Secondary CTA triggers investigation signal
+    signal_received = []
+    widget.investigation_requested.connect(lambda: signal_received.append(True))
+    trigger_btn = widget.findChild(QPushButton, "empty_state_trigger_btn")
+    assert trigger_btn is not None
+    trigger_btn.click()
+    assert len(signal_received) == 1
+
+    # Load report with formatted derivation notes
+    ev_id = "ev-proc-1"
+    report = Report(
+        summary="Structured uncertainty notes test",
+        risk_tier="low",
+        confidence=0.99,
+        observed_facts=(ObservedFact(text="Fact", evidence_ids=(ev_id,)),),
+        uncertainty_notes=(
+            "Fallback report generated deterministically. Derivation: "
+            "tier=low; score=-3; independent_positive_groups=0; "
+            "findings: valid_system_signature (-3) [ev-proc-1]; "
+            "missing_key_evidence: none"
+        ),
+        metadata=ReportMetadata(
+            provider="mock",
+            model="local_rules",
+            prompt_version="1.0.0",
+            timestamp=datetime.now(UTC),
+        ),
+    )
+    widget.set_report(report)
+    assert widget.stack.currentIndex() == 1
+
+    # Check uncertainty badge pills
+    badges = widget.findChildren(QLabel, "uncertainty_badge")
+    assert len(badges) >= 3
+    badge_texts = [b.text() for b in badges]
+    assert "low" in badge_texts
+    assert "-3" in badge_texts
+    assert "0" in badge_texts
+
+    widget.close()
+    widget.deleteLater()
     qapp.processEvents()

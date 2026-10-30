@@ -18,6 +18,7 @@ from typing import Any
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QButtonGroup,
     QComboBox,
     QFrame,
     QHBoxLayout,
@@ -187,8 +188,8 @@ class MoonlightMainWindow(QMainWindow):
         bar = QFrame()
         bar.setObjectName("top_bar")
         layout = QHBoxLayout(bar)
-        layout.setContentsMargins(SPACING.md, SPACING.sm, SPACING.md, SPACING.sm)
-        layout.setSpacing(SPACING.md)
+        layout.setContentsMargins(SPACING.md, SPACING.xs, SPACING.md, SPACING.xs)
+        layout.setSpacing(SPACING.sm)
 
         # App branding title
         brand_lbl = QLabel("MOONLIGHT")
@@ -203,60 +204,75 @@ class MoonlightMainWindow(QMainWindow):
         sep1.setStyleSheet(f"color: {COLORS.border_subtle}; font-weight: 300;")
         layout.addWidget(sep1)
 
-        # Mode toggle: Replay vs Live
-        mode_box = QHBoxLayout()
-        mode_box.setSpacing(2)
+        # Mode toggle segmented control: Replay vs Live
+        mode_frame = QFrame()
+        mode_frame.setObjectName("mode_toggle_container")
+        mode_layout = QHBoxLayout(mode_frame)
+        mode_layout.setContentsMargins(2, 2, 2, 2)
+        mode_layout.setSpacing(2)
+
         self.btn_replay = QPushButton("Replay")
         self.btn_replay.setObjectName("btn_replay")
         self.btn_replay.setCheckable(True)
         self.btn_replay.setChecked(True)
         self.btn_replay.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_replay.clicked.connect(lambda: self._set_mode("replay"))
-        mode_box.addWidget(self.btn_replay)
 
         self.btn_live = QPushButton("Live")
         self.btn_live.setObjectName("btn_live")
         self.btn_live.setCheckable(True)
         self.btn_live.setChecked(False)
         self.btn_live.setCursor(Qt.CursorShape.PointingHandCursor)
+
+        self.mode_group = QButtonGroup(self)
+        self.mode_group.setExclusive(True)
+        self.mode_group.addButton(self.btn_replay)
+        self.mode_group.addButton(self.btn_live)
+
+        self.btn_replay.clicked.connect(lambda: self._set_mode("replay"))
         self.btn_live.clicked.connect(lambda: self._set_mode("live"))
-        mode_box.addWidget(self.btn_live)
 
-        layout.addLayout(mode_box)
+        mode_layout.addWidget(self.btn_replay)
+        mode_layout.addWidget(self.btn_live)
+        layout.addWidget(mode_frame)
 
-        # Scenario / Target Selector (Active in Replay Mode, responsive expanding)
+        # Scenario / Target Selector (Active in Replay Mode, responsive)
         self.scenario_combo = QComboBox()
         self.scenario_combo.setObjectName("scenario_selector")
         self.scenario_combo.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
         )
-        self.scenario_combo.setMinimumWidth(260)
-        self.scenario_combo.setMaximumWidth(480)
+        self.scenario_combo.setMinimumWidth(180)
+        self.scenario_combo.setMaximumWidth(340)
         self.scenario_combo.currentIndexChanged.connect(self._on_scenario_changed)
         layout.addWidget(self.scenario_combo)
 
-        # Provider Selector
+        # Provider Selector & Badge grouped cleanly
+        prov_box = QHBoxLayout()
+        prov_box.setSpacing(SPACING.xs)
         prov_lbl = QLabel("Provider:")
         prov_lbl.setStyleSheet(f"color: {COLORS.text_muted}; font-size: 11px;")
-        layout.addWidget(prov_lbl)
+        prov_box.addWidget(prov_lbl)
 
         self.provider_combo = QComboBox()
         self.provider_combo.setObjectName("provider_selector")
         self.provider_combo.addItems(["mock", "ollama-cloud", "meta"])
         self.provider_combo.currentTextChanged.connect(self._on_provider_changed)
-        layout.addWidget(self.provider_combo)
+        prov_box.addWidget(self.provider_combo)
 
-        # Provider Badge (subtle pill)
         self.provider_badge = ProviderBadgeWidget(provider="mock")
-        layout.addWidget(self.provider_badge)
+        prov_box.addWidget(self.provider_badge)
+        layout.addLayout(prov_box)
 
-        layout.addStretch()
+        layout.addStretch(1)
 
         # Status text
         self.status_lbl = QLabel("Ready")
         self.status_lbl.setObjectName("status_indicator")
         self.status_lbl.setStyleSheet(
             f"color: {COLORS.text_muted}; font-size: 11px; font-style: italic;"
+        )
+        self.status_lbl.setSizePolicy(
+            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed
         )
         layout.addWidget(self.status_lbl)
 
@@ -267,6 +283,8 @@ class MoonlightMainWindow(QMainWindow):
         self.run_btn.setIcon(get_icon("refresh"))
         self.run_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.run_btn.setToolTip("Execute grounded investigation on selected target")
+        self.run_btn.setMinimumWidth(115)
+        self.run_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.run_btn.clicked.connect(self.trigger_investigation)
         layout.addWidget(self.run_btn)
 
@@ -275,6 +293,7 @@ class MoonlightMainWindow(QMainWindow):
     def _create_nav_rail(self) -> QFrame:
         rail = QFrame()
         rail.setObjectName("nav_rail")
+        rail.setFixedWidth(200)
         layout = QVBoxLayout(rail)
         layout.setContentsMargins(SPACING.sm, SPACING.md, SPACING.sm, SPACING.md)
         layout.setSpacing(SPACING.xs)
@@ -344,6 +363,8 @@ class MoonlightMainWindow(QMainWindow):
                 provider_name=self.controller.provider_name, parent=self
             )
             if not dlg.exec():
+                self.btn_replay.setChecked(self.controller.mode == "replay")
+                self.btn_live.setChecked(self.controller.mode == "live")
                 return
 
         self.controller.mode = mode

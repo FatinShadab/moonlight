@@ -336,7 +336,6 @@ class ApprovalItemWidget(QFrame):
             self.review_btn = QPushButton("Review & Consent")
             self.review_btn.setObjectName("review_approval_btn")
             self.review_btn.setProperty("primary", "true")
-            self.review_btn.setStyleSheet("font-size: 11px; padding: 4px 10px;")
             self.review_btn.setCursor(Qt.CursorShape.PointingHandCursor)
             self.review_btn.clicked.connect(self._open_preview_dialog)
             btn_row.addWidget(self.review_btn)

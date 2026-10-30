@@ -282,7 +282,10 @@ QPushButton[class="icon-btn"]:hover {{
 /* Primary Accent Button */
 QPushButton#primary_button,
 QPushButton[primary="true"],
-QPushButton#run_investigation_btn {{
+QPushButton#run_investigation_btn,
+QPushButton#empty_state_trigger_btn,
+QPushButton#preview_action_btn,
+QPushButton#review_approval_btn {{
     background-color: {c.accent_primary};
     color: {c.text_inverse};
     border: 1px solid {c.accent_border};
@@ -292,24 +295,121 @@ QPushButton#run_investigation_btn {{
 
 QPushButton#primary_button:hover,
 QPushButton[primary="true"]:hover,
-QPushButton#run_investigation_btn:hover {{
+QPushButton#run_investigation_btn:hover,
+QPushButton#empty_state_trigger_btn:hover,
+QPushButton#preview_action_btn:hover,
+QPushButton#review_approval_btn:hover {{
     background-color: {c.accent_hover};
     border-color: {c.accent_primary};
 }}
 
 QPushButton#primary_button:pressed,
 QPushButton[primary="true"]:pressed,
-QPushButton#run_investigation_btn:pressed {{
+QPushButton#run_investigation_btn:pressed,
+QPushButton#empty_state_trigger_btn:pressed,
+QPushButton#preview_action_btn:pressed,
+QPushButton#review_approval_btn:pressed {{
     background-color: {c.accent_surface};
     color: {c.accent_primary};
 }}
 
 QPushButton#primary_button:disabled,
 QPushButton[primary="true"]:disabled,
-QPushButton#run_investigation_btn:disabled {{
+QPushButton#run_investigation_btn:disabled,
+QPushButton#empty_state_trigger_btn:disabled,
+QPushButton#preview_action_btn:disabled,
+QPushButton#review_approval_btn:disabled {{
     background-color: {c.border_default};
     color: {c.text_muted};
     border-color: {c.border_subtle};
+}}
+
+QPushButton#primary_button:focus,
+QPushButton#primary_button:focus-visible,
+QPushButton[primary="true"]:focus,
+QPushButton[primary="true"]:focus-visible,
+QPushButton#run_investigation_btn:focus,
+QPushButton#run_investigation_btn:focus-visible,
+QPushButton#empty_state_trigger_btn:focus,
+QPushButton#empty_state_trigger_btn:focus-visible,
+QPushButton#preview_action_btn:focus,
+QPushButton#preview_action_btn:focus-visible,
+QPushButton#review_approval_btn:focus,
+QPushButton#review_approval_btn:focus-visible {{
+    background-color: {c.accent_hover};
+    color: {c.text_inverse};
+    border: 1px solid #ffffff;
+}}
+
+QPushButton#preview_action_btn,
+QPushButton#review_approval_btn {{
+    padding: 4px 10px;
+    font-size: 11px;
+    border-radius: {r.sm}px;
+}}
+
+QPushButton#empty_state_trigger_btn {{
+    padding: 8px 20px;
+    font-size: 13px;
+    border-radius: {r.md}px;
+}}
+
+/* Citation Chips */
+QPushButton#citation_chip {{
+    background-color: {c.accent_surface};
+    color: {c.accent_primary};
+    border: 1px solid {c.accent_border};
+    border-radius: {r.sm}px;
+    font-weight: 700;
+    font-size: 11px;
+    padding: 2px 7px;
+}}
+
+QPushButton#citation_chip:hover {{
+    background-color: #0c4a6e;
+    border-color: {c.accent_primary};
+    color: #f0f9ff;
+}}
+
+QPushButton#citation_chip:pressed {{
+    background-color: #0369a1;
+}}
+
+/* Mode Toggle Segmented Control */
+QFrame#mode_toggle_container {{
+    background-color: #0b1120;
+    border: 1px solid {c.border_default};
+    border-radius: {r.md}px;
+    padding: 0px;
+}}
+
+QFrame#mode_toggle_container QPushButton {{
+    background-color: transparent;
+    color: {c.text_muted};
+    border: 1px solid transparent;
+    border-radius: {r.sm}px;
+    padding: 4px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    min-height: 22px;
+    max-height: 26px;
+}}
+
+QFrame#mode_toggle_container QPushButton:hover {{
+    color: {c.text_primary};
+    background-color: rgba(255, 255, 255, 0.05);
+}}
+
+QFrame#mode_toggle_container QPushButton:checked {{
+    background-color: {c.bg_surface};
+    color: {c.accent_primary};
+    border: 1px solid {c.accent_border};
+    font-weight: 700;
+}}
+
+QFrame#mode_toggle_container QPushButton:focus {{
+    outline: none;
+    border: 1px solid {c.accent_border};
 }}
 
 /* Danger Button */
@@ -502,7 +602,21 @@ QLabel#caption_label {{
     color: {c.text_muted};
 }}
 
+QLabel#uncertainty_badge {{
+    color: {c.text_primary};
+    font-size: 11px;
+    font-weight: 600;
+    background-color: {c.bg_surface_alt};
+    border: 1px solid {c.border_default};
+    padding: 2px 8px;
+    border-radius: {r.sm}px;
+}}
+
 /* Empty and Loading States */
+QWidget#empty_state_page {{
+    background-color: #0b1120;
+}}
+
 QFrame#empty_state {{
     background-color: #0b1120;
     border: 1px dashed {c.border_default};

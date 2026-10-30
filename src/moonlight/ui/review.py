@@ -61,13 +61,6 @@ class CitationButton(QPushButton):
         self.setObjectName("citation_chip")
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setToolTip(f"Jump to evidence item: {citation_id}")
-        self.setStyleSheet(
-            f"background-color: {COLORS.accent_surface}; "
-            f"color: {COLORS.accent_primary}; "
-            f"border: 1px solid {COLORS.accent_border}; "
-            f"border-radius: {RADII.sm}px; "
-            f"font-weight: 700; font-size: 11px; padding: 2px 6px;"
-        )
 
 
 class ReportReviewWidget(QWidget):
@@ -113,7 +106,7 @@ class ReportReviewWidget(QWidget):
     def _create_empty_state_page(self) -> QWidget:
         """Create clean empty state view when no investigation report is loaded."""
         page = QWidget()
-        page.setStyleSheet("background-color: #0b1120;")
+        page.setObjectName("empty_state_page")
         layout = QVBoxLayout(page)
         layout.setContentsMargins(SPACING.xl, SPACING.xl, SPACING.xl, SPACING.xl)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -156,9 +149,6 @@ class ReportReviewWidget(QWidget):
         trigger_btn.setObjectName("empty_state_trigger_btn")
         trigger_btn.setProperty("primary", "true")
         trigger_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        trigger_btn.setStyleSheet(
-            "padding: 8px 18px; font-weight: 600; font-size: 12px;"
-        )
         trigger_btn.clicked.connect(self._on_trigger_clicked)
         card_layout.addWidget(trigger_btn, alignment=Qt.AlignmentFlag.AlignCenter)
 
@@ -384,12 +374,36 @@ class ReportReviewWidget(QWidget):
     def _format_uncertainty_notes(self, layout: QVBoxLayout, notes: str) -> None:
         """Parse raw derivation strings into clean metadata pills or grid."""
         raw = notes.strip()
-        # Check if notes follow a key-value pattern: "tier=low; ..."
-        if "tier=" in raw or ";" in raw:
+        if not raw:
+            return
+
+        # Check for introductory preamble before "Derivation:" or "tier="
+        preamble = ""
+        deriv_match = re.search(
+            r"^(.*?)(?:Derivation:|\btier=)", raw, flags=re.IGNORECASE | re.DOTALL
+        )
+        if deriv_match and deriv_match.group(1).strip():
+            preamble = deriv_match.group(1).strip()
+            raw = raw[deriv_match.end(1) :].strip()
+
+        if preamble:
+            preamble_lbl = QLabel(preamble)
+            preamble_lbl.setWordWrap(True)
+            preamble_lbl.setStyleSheet(
+                f"color: {COLORS.text_secondary}; font-size: 12px; margin-bottom: 4px;"
+            )
+            layout.addWidget(preamble_lbl)
+
+        if raw.lower().startswith("derivation:"):
+            raw = raw[len("derivation:") :].strip()
+
+        if "tier=" in raw.lower() or ";" in raw:
             parts = [p.strip() for p in re.split(r"[;\n]+", raw) if p.strip()]
             grid = QGridLayout()
             grid.setSpacing(SPACING.xs)
             grid.setContentsMargins(0, SPACING.xs, 0, 0)
+            grid.setColumnStretch(0, 0)
+            grid.setColumnStretch(1, 1)
 
             row = 0
             for part in parts:
@@ -404,28 +418,56 @@ class ReportReviewWidget(QWidget):
                         "font-size: 11px; font-weight: 600;"
                     )
                     v_lbl = QLabel(v.strip())
+                    v_lbl.setObjectName("uncertainty_badge")
                     v_lbl.setStyleSheet(
                         f"color: {COLORS.text_primary}; font-size: 11px; "
-                        "font-weight: 500; "
+                        "font-weight: 600; "
                         f"background-color: {COLORS.bg_surface_alt}; "
-                        f"padding: 2px 6px; border-radius: {RADII.sm}px;"
+                        f"border: 1px solid {COLORS.border_default}; "
+                        f"padding: 2px 8px; border-radius: {RADII.sm}px;"
                     )
-                    grid.addWidget(k_lbl, row, 0)
-                    grid.addWidget(v_lbl, row, 1)
+                    v_box = QHBoxLayout()
+                    v_box.setContentsMargins(0, 0, 0, 0)
+                    v_box.addWidget(v_lbl)
+                    v_box.addStretch(1)
+
+                    grid.addWidget(
+                        k_lbl,
+                        row,
+                        0,
+                        Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft,
+                    )
+                    grid.addLayout(
+                        v_box,
+                        row,
+                        1,
+                        Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft,
+                    )
                     row += 1
                 elif ":" in clean_part:
                     k, v = clean_part.split(":", 1)
-                    k_lbl = QLabel(k.strip().title() + ":")
+                    k_lbl = QLabel(k.strip().replace("_", " ").title() + ":")
                     k_lbl.setStyleSheet(
                         f"color: {COLORS.text_muted}; "
                         "font-size: 11px; font-weight: 600;"
                     )
                     v_lbl = QLabel(v.strip())
+                    v_lbl.setWordWrap(True)
                     v_lbl.setStyleSheet(
                         f"color: {COLORS.text_secondary}; font-size: 11px;"
                     )
-                    grid.addWidget(k_lbl, row, 0)
-                    grid.addWidget(v_lbl, row, 1)
+                    grid.addWidget(
+                        k_lbl,
+                        row,
+                        0,
+                        Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft,
+                    )
+                    grid.addWidget(
+                        v_lbl,
+                        row,
+                        1,
+                        Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft,
+                    )
                     row += 1
                 else:
                     item_lbl = QLabel(f"• {clean_part}")
