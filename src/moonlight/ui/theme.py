@@ -95,7 +95,7 @@ class Radii:
     md: int = 6
     lg: int = 8
     xl: int = 12
-    pill: int = 9999
+    pill: int = 6  # Unified rounded corner box token (6px) matching buttons and badges
 
 
 @dataclass(frozen=True)
