@@ -148,7 +148,28 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="explicit extra confirmation for review-first storage paths",
     )
     policy_exec.add_argument("--audit-log")
+    eval_cmd = commands.add_parser(
+        "eval", help="run offline evaluation harness across all labeled scenarios"
+    )
+    eval_cmd.add_argument(
+        "--offline",
+        action="store_true",
+        default=True,
+        help="run offline evaluation harness",
+    )
+    eval_cmd.add_argument(
+        "--output-dir",
+        default="results",
+        help="output directory for eval results",
+    )
     args = parser.parse_args(argv)
+    if args.command == "eval":
+        from moonlight.eval.harness import run_offline_eval
+
+        eval_report = run_offline_eval(output_dir=args.output_dir)
+        verdict = "PASSED" if eval_report.overall_passed else "FAILED"
+        print(f"Offline evaluation complete: {verdict}")
+        return 0 if eval_report.overall_passed else 1
     if args.command == "investigate":
         try:
             raw = json.loads(Path(args.input).read_text(encoding="utf-8-sig"))
