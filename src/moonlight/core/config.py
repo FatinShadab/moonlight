@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_SETTINGS_DIR: Final[Path] = Path("state")
 DEFAULT_SETTINGS_FILE: Final[Path] = DEFAULT_SETTINGS_DIR / "settings.json"
 
-ProviderType = Literal["mock", "ollama-cloud", "meta"]
+ProviderType = Literal["mock", "ollama", "ollama-cloud", "meta"]
 AppMode = Literal["replay", "live"]
 
 
@@ -44,6 +44,10 @@ class AppSettings(BaseModel):
     meta_model: str = Field(
         default="llama-3.3-70b-instruct",
         description="Model identifier for Meta Model API.",
+    )
+    meta_base_url: str = Field(
+        default="https://api.meta.ai/v1",
+        description="Base URL for Meta Model API endpoint.",
     )
     ollama_api_key: str = Field(
         default="",
@@ -145,14 +149,30 @@ def load_settings(path: Path | str | None = None) -> AppSettings:
             )
 
     # Fall back to environment variables
-    env_provider = os.environ.get("PROVIDER", "mock").lower()
-    valid_provider: ProviderType = (
-        env_provider if env_provider in ("mock", "ollama-cloud", "meta") else "mock"  # type: ignore[assignment]
+    raw_provider = (
+        os.environ.get("MOONLIGHT_PROVIDER") or os.environ.get("PROVIDER") or "mock"
+    ).lower()
+    valid_provider: ProviderType
+    if raw_provider in ("ollama", "ollama-cloud"):
+        valid_provider = "ollama-cloud" if raw_provider == "ollama-cloud" else "ollama"
+    elif raw_provider == "meta":
+        valid_provider = "meta"
+    else:
+        valid_provider = "mock"
+
+    meta_key = os.environ.get("MODEL_API_KEY") or os.environ.get("META_API_KEY", "")
+    meta_m = os.environ.get("MOONLIGHT_META_MODEL") or os.environ.get(
+        "META_MODEL", "llama-3.3-70b-instruct"
+    )
+    meta_b = os.environ.get("MOONLIGHT_META_BASE_URL") or os.environ.get(
+        "META_BASE_URL", "https://api.meta.ai/v1"
     )
 
     return AppSettings(
         provider=valid_provider,
-        meta_api_key=os.environ.get("META_API_KEY", ""),
+        meta_api_key=meta_key,
+        meta_model=meta_m,
+        meta_base_url=meta_b,
         ollama_api_key=os.environ.get("OLLAMA_API_KEY", ""),
         ollama_model=os.environ.get("OLLAMA_MODEL", "gemma4:31b"),
         ollama_base_url=os.environ.get("OLLAMA_BASE_URL", "https://ollama.com"),
@@ -173,8 +193,10 @@ def save_settings(
 
     if sync_env:
         if settings.meta_api_key:
+            os.environ["MODEL_API_KEY"] = settings.meta_api_key
             os.environ["META_API_KEY"] = settings.meta_api_key
-        elif "META_API_KEY" in os.environ:
+        else:
+            os.environ.pop("MODEL_API_KEY", None)
             os.environ.pop("META_API_KEY", None)
 
         if settings.ollama_api_key:
