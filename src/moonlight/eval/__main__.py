@@ -27,6 +27,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="Run all scenarios offline using local engines (default: True).",
     )
     parser.add_argument(
+        "--provider",
+        choices=["mock", "ollama", "meta"],
+        default="mock",
+        help="Reasoning provider to evaluate: mock (default), ollama, or meta.",
+    )
+    parser.add_argument(
         "--output-dir",
         type=Path,
         default=Path("results"),
@@ -61,6 +67,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         output_dir=args.output_dir,
         json_filename=args.json_file,
         markdown_filename=args.markdown_file,
+        provider=args.provider,
     )
 
     if not args.quiet:

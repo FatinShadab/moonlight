@@ -28,6 +28,7 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 | P8b | Ollama cloud provider hardening (PR #16) | maintainer to fill |
 | CI | Full history secret scanning with Gitleaks (PR #17) | maintainer to fill |
 | Eval | Offline evaluation harness & metrics (PR #18) | maintainer to fill |
+| P7b | Meta Model API provider (branch feat/meta-provider) | maintainer to fill |
 
 ## History notes
 
@@ -286,3 +287,19 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 - Added Windows CI step `Offline evaluation harness` in `.github/workflows/ci.yml`.
 - Added unit tests in `tests/test_eval.py` covering schema validity, metrics calculations, storage safety invariants, mock provenance, and CLI execution.
 - Validation: all 558 pytest tests passing, strict mypy clean (103 source files), ruff check and format clean.
+
+## 2026-11-03 — Meta Model API provider (feat/meta-provider)
+
+- Implemented `MetaProvider` calling the Meta Model API chat completions endpoint (`POST {base}/chat/completions`, default `https://api.meta.ai/v1`, default model `muse-spark-1.3`).
+- Added structured output configuration via `"response_format": {"type": "json_schema", "json_schema": {"name": "InvestigationReport", "schema": <Report schema>}}` without using `text.format` (Responses API). Results parsed from `choices[0].message.content`.
+- Enforced Meta schema limits: verified no recursive schemas and nesting depth <= 10 (`validate_schema_depth_and_recursion`). Added unit tests asserting compliance and failure on recursive or deep schemas.
+- Configured settings and environment variables: `MOONLIGHT_PROVIDER` (`mock|ollama|meta`, default `ollama`), `MODEL_API_KEY`, `MOONLIGHT_META_BASE_URL`, and `MOONLIGHT_META_MODEL`. Updated `.env.example`.
+- Built with a plain HTTP client and injectable transport (`httpx.MockTransport`), requiring zero network calls in tests or CI.
+- Implemented bounded retries with exponential backoff for 429 rate limits, 5xx server errors, and network timeouts. Non-retryable errors fail immediately: 401 (`InvalidApiKeyError`), 404 (`UnknownModelError`), 400 (`ReasoningProviderError`).
+- Implemented missing key handling: raises `MissingApiKeyError` (provider-unavailable error) causing orchestrator fallback to rules-only report without crashing.
+- Guaranteed secret isolation: API keys are read strictly from environment, never logged, never cached on disk, and omitted from `__repr__`.
+- Enforced schema validation (`Report.model_validate`) and strict grounding validation (`validate_grounding_or_raise`) rejecting hallucinated or unknown evidence citations.
+- Added new CLI subcommand: `moonlight provider-check --provider meta` (makes one tiny ping call, reports status/model/latency, exits clearly with code 1 if no key).
+- Updated evaluation suite: added `--provider {mock,ollama,meta}` to `python -m moonlight.eval`. Live runs are opt-in and excluded from CI; `meta` without a key records `skipped (no MODEL_API_KEY)` without failure. Stores `is_mock=False` for live rows and tracks schema-valid rate, grounded rate, hallucinated-evidence count, unsafe-action proposals rejected, and fallback behavior.
+- Updated `RESULTS.md` with Section 9 "Live Model Results" keyed by provider/model, separate from mock results, noting date and scenario counts.
+- Validation: 580 pytest tests pass, strict mypy passes with 0 errors across 104 files, ruff check and format clean.

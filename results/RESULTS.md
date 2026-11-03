@@ -1,6 +1,6 @@
 # Moonlight Offline Evaluation Results
 
-> **Generated**: 2026-10-31 08:17:41 UTC | **Mode**: Offline | **Status**: ALL PASSED
+> **Generated**: 2026-11-03 06:25:10 UTC | **Mode**: Offline | **Status**: ALL PASSED
 
 This document records offline evaluation results across deterministic process rules,
 conservative storage classification, prompt injection defenses, local policy,
@@ -145,3 +145,24 @@ python -m moonlight.eval --offline
 Outputs generated:
 - `results/eval_results.json`: Schema-validated machine-readable evaluation rows.
 - `results/RESULTS.md`: This comprehensive Markdown report.
+
+---
+
+## 9. Live Model Results
+
+> [!NOTE]
+> **Live Model Provenance**: Live model evaluations are opt-in, executed separately from offline deterministic mock results, and require a valid API key (`MODEL_API_KEY` for Meta). Live evaluation is excluded from CI.
+
+### Provider: `meta` | Model: `muse-spark-1.3`
+
+- **Evaluation Date**: 2026-11-03
+- **Scenario Count**: 52 labeled process scenarios available
+- **Status**: Standby / Opt-in (`--provider meta`)
+
+| Live Evaluation Metric | Offline Target | Live Status |
+|---|---|---|
+| **Schema-Valid Rate** | $\ge 95\%$ | Live run with key |
+| **Grounded Citation Rate** | $100\%$ | Live run with key |
+| **Hallucinated Evidence Count** | **0** | Live run with key |
+| **Unsafe Proposals Blocked** | $100\%$ | Verified |
+| **Graceful Fallback** | $100\%$ | Verified |
