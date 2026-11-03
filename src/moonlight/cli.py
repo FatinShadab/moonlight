@@ -9,6 +9,7 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
+import httpx
 from pydantic import TypeAdapter
 
 from moonlight.collectors.bundle import collect_evidence
@@ -37,6 +38,135 @@ def _pid(value: str) -> int:
     if pid < 0:
         raise argparse.ArgumentTypeError("PID must be non-negative")
     return pid
+
+
+def check_provider(
+    provider: str = "meta",
+    model: str | None = None,
+    base_url: str | None = None,
+    timeout: float = 15.0,
+    client: httpx.Client | None = None,
+    api_key: str | None = None,
+) -> int:
+    """Run a small check call against the specified provider."""
+    import time
+
+    import httpx
+
+    prov = provider.lower()
+    if prov == "meta":
+        key = (
+            api_key
+            or os.environ.get("MODEL_API_KEY")
+            or os.environ.get("META_API_KEY", "")
+        ).strip()
+        if not key:
+            print(
+                "Error: MODEL_API_KEY environment variable is missing or empty.\n"
+                "Please configure MODEL_API_KEY to use the Meta Model API provider.",
+                file=sys.stderr,
+            )
+            return 1
+
+        target_model = (
+            model
+            or os.environ.get("MOONLIGHT_META_MODEL")
+            or os.environ.get("META_MODEL")
+            or "muse-spark-1.3"
+        )
+        target_base = (
+            base_url
+            or os.environ.get("MOONLIGHT_META_BASE_URL")
+            or os.environ.get("META_BASE_URL")
+            or "https://api.meta.ai/v1"
+        ).rstrip("/")
+
+        endpoint = f"{target_base}/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {key}",
+            "Content-Type": "application/json",
+        }
+        body = {
+            "model": target_model,
+            "messages": [{"role": "user", "content": "ping"}],
+            "max_tokens": 1,
+        }
+
+        owns_client = client is None
+        http_client = client or httpx.Client(timeout=timeout, follow_redirects=False)
+        start = time.perf_counter()
+        try:
+            resp = http_client.post(endpoint, headers=headers, json=body)
+            elapsed_ms = (time.perf_counter() - start) * 1000.0
+            if resp.status_code == 200:
+                print("Provider : meta")
+                print("Status   : OK (connected)")
+                print(f"Model    : {target_model}")
+                print(f"Latency  : {elapsed_ms:.1f} ms")
+                return 0
+            err_msg = ""
+            try:
+                err_data = resp.json()
+                if isinstance(err_data, dict):
+                    err_msg = str(
+                        err_data.get("error", err_data.get("message", resp.text[:200]))
+                    )
+            except Exception:
+                err_msg = resp.text[:200]
+            print("Provider : meta", file=sys.stderr)
+            print(
+                f"Status   : FAILED ({resp.status_code}) - {err_msg}", file=sys.stderr
+            )
+            print(f"Model    : {target_model}", file=sys.stderr)
+            print(f"Latency  : {elapsed_ms:.1f} ms", file=sys.stderr)
+            return 1
+        except Exception as exc:
+            elapsed_ms = (time.perf_counter() - start) * 1000.0
+            print("Provider : meta", file=sys.stderr)
+            print(f"Status   : FAILED - {exc}", file=sys.stderr)
+            print(f"Model    : {target_model}", file=sys.stderr)
+            print(f"Latency  : {elapsed_ms:.1f} ms", file=sys.stderr)
+            return 1
+        finally:
+            if owns_client:
+                http_client.close()
+
+    elif prov in ("ollama", "ollama-cloud"):
+        from moonlight.core.config import verify_ollama_connection
+
+        ollama_key = (api_key or os.environ.get("OLLAMA_API_KEY", "")).strip()
+        target_base = (
+            base_url or os.environ.get("OLLAMA_BASE_URL", "https://ollama.com")
+        ).rstrip("/")
+        target_model = model or os.environ.get("OLLAMA_MODEL", "gemma4:31b")
+        start = time.perf_counter()
+        ok, msg, _ = verify_ollama_connection(
+            base_url=target_base,
+            api_key=ollama_key,
+            timeout=timeout,
+            client=client,
+        )
+        elapsed_ms = (time.perf_counter() - start) * 1000.0
+        status_text = "OK (connected)" if ok else f"FAILED - {msg}"
+        out = sys.stdout if ok else sys.stderr
+        print(f"Provider : {prov}", file=out)
+        print(f"Status   : {status_text}", file=out)
+        print(f"Model    : {target_model}", file=out)
+        print(f"Latency  : {elapsed_ms:.1f} ms", file=out)
+        return 0 if ok else 1
+
+    elif prov == "mock":
+        print("Provider : mock")
+        print("Status   : OK (offline)")
+        print("Model    : mock-model")
+        print("Latency  : 0.0 ms")
+        return 0
+
+    print(
+        f"Unknown provider '{prov}'. Supported: meta, ollama, mock",
+        file=sys.stderr,
+    )
+    return 1
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -84,7 +214,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--input", required=True, help="evidence bundle, model payload, or report JSON"
     )
     investigate_cmd.add_argument(
-        "--provider", choices=["mock", "ollama-cloud", "meta"], default=None
+        "--provider", choices=["mock", "ollama", "ollama-cloud", "meta"], default=None
     )
     investigate_cmd.add_argument(
         "--fixtures-dir", help="override directory for mock fixture reports"
@@ -148,6 +278,23 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="explicit extra confirmation for review-first storage paths",
     )
     policy_exec.add_argument("--audit-log")
+    prov_check = commands.add_parser(
+        "provider-check", help="check reasoning provider health, model, and latency"
+    )
+    prov_check.add_argument(
+        "--provider",
+        choices=["meta", "ollama", "ollama-cloud", "mock"],
+        default="meta",
+        help="reasoning provider to check (default: meta)",
+    )
+    prov_check.add_argument("--model", help="model name or identifier override")
+    prov_check.add_argument("--base-url", help="provider base URL override")
+    prov_check.add_argument(
+        "--timeout",
+        type=float,
+        default=15.0,
+        help="request timeout in seconds (default: 15.0)",
+    )
     eval_cmd = commands.add_parser(
         "eval", help="run offline evaluation harness across all labeled scenarios"
     )
@@ -163,6 +310,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="output directory for eval results",
     )
     args = parser.parse_args(argv)
+    if args.command == "provider-check":
+        return check_provider(
+            provider=args.provider,
+            model=args.model,
+            base_url=args.base_url,
+            timeout=args.timeout,
+        )
     if args.command == "eval":
         from moonlight.eval.harness import run_offline_eval
 
