@@ -27,7 +27,10 @@ from moonlight.reasoning.exceptions import (
     ReasoningProviderError,
     UnknownModelError,
 )
-from moonlight.reasoning.grounding import validate_grounding
+from moonlight.reasoning.grounding import (
+    validate_grounding,
+    validate_grounding_or_raise,
+)
 from moonlight.reasoning.models import REPORT_SCHEMA_VERSION, Report
 from moonlight.reasoning.prompting import (
     PROMPT_VERSION,
@@ -37,7 +40,7 @@ from moonlight.reasoning.prompting import (
 
 logger = logging.getLogger(__name__)
 
-ProviderType = Literal["mock", "ollama-cloud", "meta"]
+ProviderType = Literal["mock", "ollama", "ollama-cloud", "meta"]
 
 _DEFAULT_FIXTURES_DIR = Path(__file__).resolve().parents[3] / "fixtures" / "reports"
 
@@ -645,8 +648,164 @@ class OllamaCloudProvider:
         return remapped
 
 
+def validate_schema_depth_and_recursion(
+    schema: dict[str, Any], max_depth: int = 10
+) -> None:
+    """Validate that schema does not contain circular references and depth <= max_depth.
+
+    Args:
+        schema: A JSON schema dictionary.
+        max_depth: Maximum allowed nesting depth (default: 10 per Meta API limit).
+
+    Raises:
+        ValueError: If a recursive circular reference is detected or
+            nesting depth exceeds max_depth.
+    """
+    defs = schema.get("$defs", {}) or schema.get("definitions", {})
+
+    def resolve_ref(ref_str: str) -> dict[str, Any]:
+        if ref_str.startswith("#/$defs/"):
+            name = ref_str[len("#/$defs/") :]
+            target = defs.get(name)
+            if isinstance(target, dict):
+                return target
+        elif ref_str.startswith("#/definitions/"):
+            name = ref_str[len("#/definitions/") :]
+            target = defs.get(name)
+            if isinstance(target, dict):
+                return target
+        return {}
+
+    def compute_depth(node: Any, visited_refs: frozenset[str]) -> int:
+        if not isinstance(node, dict):
+            return 0
+        if "$ref" in node:
+            ref = str(node["$ref"])
+            if ref in visited_refs:
+                raise ValueError(
+                    f"Recursive schema detected: circular reference to {ref!r}"
+                )
+            target = resolve_ref(ref)
+            return compute_depth(target, visited_refs | {ref})
+
+        max_sub = 0
+        for val in node.values():
+            if isinstance(val, dict):
+                max_sub = max(max_sub, 1 + compute_depth(val, visited_refs))
+            elif isinstance(val, list):
+                for item in val:
+                    if isinstance(item, dict):
+                        max_sub = max(max_sub, 1 + compute_depth(item, visited_refs))
+        return max_sub
+
+    depth = compute_depth(schema, frozenset())
+    if depth > max_depth:
+        raise ValueError(
+            f"Schema nesting depth ({depth}) exceeds maximum allowed depth "
+            f"of {max_depth}"
+        )
+
+
 class MetaProvider:
-    """Offline placeholder for Meta Model API provider."""
+    """Production provider calling the Meta Model API chat completions endpoint.
+
+    Features:
+    - POST {base}/chat/completions (default: https://api.meta.ai/v1/chat/completions)
+    - Bearer authorization with MODEL_API_KEY (or META_API_KEY)
+    - Default model: muse-spark-1.3 (overridden by MOONLIGHT_META_MODEL or param)
+    - Structured output: response_format with json_schema name InvestigationReport
+    - Does NOT use text.format (Responses API)
+    - Result is extracted from choices[0].message.content
+    - Validates schema limits (no recursive schemas, nesting depth <= 10)
+    - Plain HTTP client with injectable client/transport for offline unit tests
+    - Bounded retries with exponential backoff for 429, 5xx, and timeouts
+    - Non-retryable: 401 (InvalidApiKeyError), 404 (UnknownModelError),
+      400 (ReasoningProviderError)
+    - Missing key raises MissingApiKeyError (orchestrator fallback runs)
+    - Runs schema validation and grounding checks (every cited evidence ID must exist)
+    - Never logs or exposes API keys (redacted from logs, __repr__, and cache)
+    """
+
+    def __init__(
+        self,
+        model: str | None = None,
+        base_url: str | None = None,
+        timeout: float = 30.0,
+        max_retries: int = 2,
+        backoff_factor: float = 0.5,
+        max_total_retry_time: float = 60.0,
+        cache: ReasoningCache | None = None,
+        prompt_version: str = PROMPT_VERSION,
+        report_schema_version: str = REPORT_SCHEMA_VERSION,
+        client: httpx.Client | None = None,
+        transport: httpx.BaseTransport | None = None,
+        sleep_fn: Callable[[float], None] = time.sleep,
+        api_key: str | None = None,
+    ) -> None:
+        self.model = (
+            model
+            or os.environ.get("MOONLIGHT_META_MODEL")
+            or os.environ.get("META_MODEL")
+            or "muse-spark-1.3"
+        )
+        raw_base = (
+            base_url
+            or os.environ.get("MOONLIGHT_META_BASE_URL")
+            or os.environ.get("META_BASE_URL")
+            or "https://api.meta.ai/v1"
+        )
+        self.base_url = raw_base.rstrip("/")
+        self.timeout = timeout
+        self.max_retries = max_retries
+        self.backoff_factor = backoff_factor
+        self.max_total_retry_time = max_total_retry_time
+        self.cache = cache or ReasoningCache()
+        self.prompt_version = prompt_version
+        self.report_schema_version = report_schema_version
+        self._sleep_fn = sleep_fn
+        self._api_key = api_key
+
+        self._client: httpx.Client | None
+        if transport is not None and client is None:
+            self._client = httpx.Client(transport=transport, timeout=self.timeout)
+        else:
+            self._client = client
+
+        # Validate that the Report schema respects Meta's limits
+        schema = Report.model_json_schema()
+        validate_schema_depth_and_recursion(schema, max_depth=10)
+
+    def __repr__(self) -> str:
+        # Never expose the API key in representations
+        return (
+            f"MetaProvider(model={self.model!r}, "
+            f"base_url={self.base_url!r}, timeout={self.timeout})"
+        )
+
+    def _get_api_key(self) -> str:
+        key = (
+            self._api_key
+            or os.environ.get("MODEL_API_KEY")
+            or os.environ.get("META_API_KEY", "")
+        )
+        if not key.strip():
+            raise MissingApiKeyError(
+                "MODEL_API_KEY environment variable is missing or empty"
+            )
+        return key.strip()
+
+    def _compute_backoff(
+        self, attempt: int, response: httpx.Response | None = None
+    ) -> float:
+        if response is not None and "Retry-After" in response.headers:
+            try:
+                seconds = float(response.headers["Retry-After"])
+                if seconds > 0:
+                    return min(seconds, 30.0)
+            except ValueError:
+                pass
+        backoff = float(self.backoff_factor * (2**attempt))
+        return min(backoff, 30.0)
 
     def investigate(
         self,
@@ -654,7 +813,277 @@ class MetaProvider:
         *,
         repair_instruction: str | None = None,
     ) -> Report:
-        raise NotImplementedError("MetaProvider is not implemented in offline mode")
+        """Call Meta Model API and return a validated, grounded Report."""
+        api_key = self._get_api_key()
+
+        if not self.model.strip():
+            raise UnknownModelError(
+                "Meta model name is required; set MOONLIGHT_META_MODEL "
+                "environment variable or pass model to MetaProvider."
+            )
+
+        evidence = _coerce_evidence_payload(minimized_payload)
+        system_prompt, user_prompt, alias_map = build_investigation_prompt(evidence)
+
+        if repair_instruction:
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": repair_instruction},
+            ]
+        else:
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ]
+
+        payload_hash = compute_payload_hash(messages)
+        self.cache.record_request("meta")
+
+        # Check provider-segregated cache
+        cached_content = self.cache.get(
+            provider="meta",
+            model=self.model,
+            payload_hash=payload_hash,
+            prompt_version=self.prompt_version,
+            report_schema_version=self.report_schema_version,
+            structured_output_mode="json_schema",
+        )
+        if cached_content is not None:
+            self.cache.record_hit("meta", self.model)
+            try:
+                cached_report = Report.model_validate_json(cached_content)
+                remapped = remap_report_citations(cached_report, alias_map)
+                validate_grounding_or_raise(remapped, evidence)
+                return remapped
+            except Exception as exc:
+                logger.warning("Cached report validation failed: %s; refetching", exc)
+                self.cache.invalidate(
+                    provider="meta",
+                    model=self.model,
+                    payload_hash=payload_hash,
+                    prompt_version=self.prompt_version,
+                    report_schema_version=self.report_schema_version,
+                    structured_output_mode="json_schema",
+                )
+
+        self.cache.record_miss("meta", self.model)
+
+        request_body: dict[str, Any] = {
+            "model": self.model,
+            "messages": messages,
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "InvestigationReport",
+                    "schema": Report.model_json_schema(),
+                },
+            },
+        }
+
+        endpoint = f"{self.base_url}/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
+
+        response: httpx.Response | None = None
+        owns_client = self._client is None
+        client = self._client or httpx.Client(
+            timeout=self.timeout, follow_redirects=False
+        )
+
+        total_retry_time: float = 0.0
+
+        def check_and_sleep(
+            sleep_sec: float, exc_on_exceeded: Exception | None = None
+        ) -> None:
+            nonlocal total_retry_time
+            if total_retry_time + sleep_sec > self.max_total_retry_time:
+                if exc_on_exceeded is not None:
+                    raise exc_on_exceeded
+                raise RateLimitError(
+                    f"Total retry delay ({total_retry_time + sleep_sec:.1f}s) "
+                    f"exceeded maximum allowed limit ({self.max_total_retry_time}s)"
+                )
+            total_retry_time += sleep_sec
+            self._sleep_fn(sleep_sec)
+
+        try:
+            for attempt in range(self.max_retries + 1):
+                try:
+                    response = client.post(
+                        endpoint,
+                        headers=headers,
+                        json=request_body,
+                        timeout=self.timeout,
+                    )
+
+                    if response.status_code == 200:
+                        break
+
+                    if response.status_code in (401, 403):
+                        err_msg = _extract_error_message(response)
+                        raise InvalidApiKeyError(
+                            f"Meta API key invalid ({response.status_code}): {err_msg}"
+                        )
+
+                    if response.status_code == 404:
+                        err_msg = _extract_error_message(response)
+                        raise UnknownModelError(
+                            f"Meta model '{self.model}' not found (404): {err_msg}"
+                        )
+
+                    if response.status_code == 400:
+                        err_msg = _extract_error_message(response)
+                        raise ReasoningProviderError(
+                            f"Meta request error / bad schema (400): {err_msg}"
+                        )
+
+                    if response.status_code == 429:
+                        if attempt < self.max_retries:
+                            sleep_sec = self._compute_backoff(attempt, response)
+                            check_and_sleep(sleep_sec)
+                            continue
+                        err_msg = _extract_error_message(response)
+                        raise RateLimitError(
+                            f"Meta rate limit exceeded (429) after "
+                            f"{self.max_retries} retries: {err_msg}"
+                        )
+
+                    if response.status_code >= 500:
+                        if attempt < self.max_retries:
+                            sleep_sec = self._compute_backoff(attempt, response)
+                            check_and_sleep(sleep_sec)
+                            continue
+                        err_msg = _extract_error_message(response)
+                        raise ReasoningProviderError(
+                            f"Meta server error ({response.status_code}): {err_msg}"
+                        )
+
+                    err_msg = _extract_error_message(response)
+                    raise ReasoningProviderError(
+                        f"Meta unexpected HTTP status ({response.status_code}): "
+                        f"{err_msg}"
+                    )
+
+                except httpx.TimeoutException as exc:
+                    if attempt < self.max_retries:
+                        sleep_sec = self._compute_backoff(attempt)
+                        timeout_err = ProviderTimeoutError(
+                            "Meta request timed out; total retry time "
+                            f"({total_retry_time + sleep_sec:.1f}s) exceeded limit: "
+                            f"{exc}"
+                        )
+                        check_and_sleep(sleep_sec, exc_on_exceeded=timeout_err)
+                        continue
+                    raise ProviderTimeoutError(
+                        f"Meta request timed out after {self.timeout}s and "
+                        f"{self.max_retries} retries: {exc}"
+                    ) from exc
+                except (
+                    InvalidApiKeyError,
+                    UnknownModelError,
+                    RateLimitError,
+                    ProviderTimeoutError,
+                    ReasoningProviderError,
+                ):
+                    raise
+                except httpx.RequestError as exc:
+                    if attempt < self.max_retries:
+                        sleep_sec = self._compute_backoff(attempt)
+                        net_err = ReasoningProviderError(
+                            "Network error contacting Meta API; total retry time "
+                            f"({total_retry_time + sleep_sec:.1f}s) exceeded limit: "
+                            f"{exc}"
+                        )
+                        check_and_sleep(sleep_sec, exc_on_exceeded=net_err)
+                        continue
+                    raise ReasoningProviderError(
+                        f"Network error contacting Meta API: {exc}"
+                    ) from exc
+        finally:
+            if owns_client:
+                client.close()
+
+        if response is None:
+            raise ReasoningProviderError("No response received from Meta Model API")
+
+        # Parse response JSON
+        try:
+            resp_data = response.json()
+        except Exception as exc:
+            raise MalformedOutputError(
+                f"Meta response body is not valid JSON: {exc}"
+            ) from exc
+
+        if not isinstance(resp_data, dict):
+            raise MalformedOutputError("Meta response body must be a JSON object")
+
+        choices = resp_data.get("choices")
+        if not isinstance(choices, list) or not choices:
+            raise MalformedOutputError("Meta response missing or empty 'choices' field")
+
+        choice = choices[0]
+        if not isinstance(choice, dict):
+            raise MalformedOutputError("Meta response choice must be an object")
+
+        message = choice.get("message")
+        if not isinstance(message, dict) or "content" not in message:
+            raise MalformedOutputError(
+                "Meta response missing expected 'message.content' field"
+            )
+
+        content_raw = message["content"]
+        if not isinstance(content_raw, str):
+            raise MalformedOutputError(
+                "Meta response 'message.content' must be a string"
+            )
+
+        try:
+            report_dict = json.loads(content_raw)
+        except Exception as exc:
+            raise MalformedOutputError(
+                f"Failed to parse report content from Meta model as JSON: {exc}"
+            ) from exc
+
+        if not isinstance(report_dict, dict):
+            raise MalformedOutputError(
+                "Meta model report content must be a JSON object"
+            )
+
+        metadata_dict = report_dict.get("metadata")
+        if not isinstance(metadata_dict, dict):
+            metadata_dict = {}
+        metadata_dict["provider"] = "meta"
+        metadata_dict["model"] = self.model
+        metadata_dict["structured_output_mode"] = "json_schema"
+        if "prompt_version" not in metadata_dict:
+            metadata_dict["prompt_version"] = self.prompt_version
+        if "timestamp" not in metadata_dict:
+            metadata_dict["timestamp"] = datetime.now(UTC).isoformat()
+        report_dict["metadata"] = metadata_dict
+
+        try:
+            report = Report.model_validate(report_dict)
+        except Exception as exc:
+            raise MalformedOutputError(
+                f"Model report failed schema validation: {exc}"
+            ) from exc
+
+        remapped = remap_report_citations(report, alias_map)
+        validate_grounding_or_raise(remapped, evidence)
+
+        self.cache.set(
+            provider="meta",
+            model=self.model,
+            payload_hash=payload_hash,
+            prompt_version=self.prompt_version,
+            response_text=remapped.model_dump_json(),
+            report_schema_version=self.report_schema_version,
+            structured_output_mode="json_schema",
+        )
+
+        return remapped
 
 
 class ReasoningConfig(BaseModel):
@@ -724,6 +1153,14 @@ class ReasoningConfig(BaseModel):
         ge=0.0,
         description="Maximum cumulative retry delay in seconds.",
     )
+    meta_base_url: str = Field(
+        default="https://api.meta.ai/v1",
+        description="Base URL for Meta Model API endpoint.",
+    )
+    meta_model: str = Field(
+        default="muse-spark-1.3",
+        description="Meta model name (MOONLIGHT_META_MODEL / muse-spark-1.3).",
+    )
 
 
 def get_provider(
@@ -742,8 +1179,9 @@ def get_provider(
     selected: str = (
         provider
         or (config.provider if config else None)
+        or os.environ.get("MOONLIGHT_PROVIDER")
         or os.environ.get("PROVIDER")
-        or "mock"
+        or "ollama"
     ).lower()
 
     if selected == "mock":
@@ -755,7 +1193,7 @@ def get_provider(
         )
         return MockProvider(fixtures_dir=fixtures_dir, default_fixture=default_fixture)
 
-    if selected == "ollama-cloud":
+    if selected in ("ollama", "ollama-cloud"):
         model = (
             kwargs.get("model")
             or (config.ollama_model if config else None)
@@ -799,9 +1237,55 @@ def get_provider(
         )
 
     if selected == "meta":
-        return MetaProvider()
+        meta_m = (
+            kwargs.get("model")
+            or (
+                config.meta_model
+                if config and getattr(config, "meta_model", None)
+                else None
+            )
+            or os.environ.get("MOONLIGHT_META_MODEL")
+            or os.environ.get("META_MODEL")
+            or (config.model if config and config.model != "mock-model" else None)
+            or "muse-spark-1.3"
+        )
+        meta_b = (
+            kwargs.get("base_url")
+            or (
+                config.meta_base_url
+                if config and getattr(config, "meta_base_url", None)
+                else None
+            )
+            or os.environ.get("MOONLIGHT_META_BASE_URL")
+            or os.environ.get("META_BASE_URL")
+            or "https://api.meta.ai/v1"
+        )
+        cache = kwargs.get("cache") or (
+            ReasoningCache(
+                cache_dir=config.cache_dir if config else None,
+                enabled=config.enable_cache if config else True,
+            )
+        )
+        max_total_retry_time = float(
+            kwargs.get("max_total_retry_time")
+            or (config.max_total_retry_time if config else 60.0)
+        )
+        return MetaProvider(
+            model=meta_m,
+            base_url=meta_b,
+            timeout=config.timeout if config else 30.0,
+            max_retries=config.max_retries if config else 2,
+            backoff_factor=config.backoff_factor if config else 0.5,
+            max_total_retry_time=max_total_retry_time,
+            cache=cache,
+            prompt_version=config.prompt_version if config else PROMPT_VERSION,
+            client=kwargs.get("client"),
+            transport=kwargs.get("transport"),
+            sleep_fn=kwargs.get("sleep_fn", time.sleep),
+            api_key=kwargs.get("api_key"),
+        )
 
     raise ValueError(
         f"Unknown reasoning provider '{selected}'. "
-        "Supported providers: mock, ollama-cloud, meta."
+        "Supported providers: mock, ollama, meta."
     )

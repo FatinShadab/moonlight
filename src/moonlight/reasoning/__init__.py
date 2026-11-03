@@ -49,6 +49,7 @@ from moonlight.reasoning.provider import (
     ReasoningConfig,
     ReportProvider,
     get_provider,
+    validate_schema_depth_and_recursion,
 )
 
 __all__ = [
@@ -91,4 +92,5 @@ __all__ = [
     "remap_report_citations",
     "validate_grounding",
     "validate_grounding_or_raise",
+    "validate_schema_depth_and_recursion",
 ]

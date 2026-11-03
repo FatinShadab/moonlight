@@ -433,7 +433,8 @@ def test_placeholder_providers_raise_expected_errors() -> None:
 
     meta = MetaProvider()
     with pytest.raises(
-        NotImplementedError, match="MetaProvider is not implemented in offline mode"
+        MissingApiKeyError,
+        match="MODEL_API_KEY environment variable is missing or empty",
     ):
         meta.investigate(payload)
 
@@ -444,9 +445,7 @@ def test_placeholder_provider_triggers_orchestrator_fallback() -> None:
 
     report = orch.investigate(bundle)
     assert report.is_fallback is True
-    assert "MetaProvider is not implemented in offline mode" in (
-        report.fallback_reason or ""
-    )
+    assert "MODEL_API_KEY" in (report.fallback_reason or "")
     assert report.metadata.provider == "rules_only_fallback"
 
 
