@@ -15,6 +15,7 @@ from moonlight.core.config import (
     fetch_ollama_models,
     load_settings,
     save_settings,
+    verify_meta_connection,
     verify_ollama_connection,
 )
 from moonlight.reasoning.exceptions import (
@@ -90,6 +91,7 @@ def test_settings_load_env_fallback(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     non_existent = tmp_path / "does_not_exist.json"
+    monkeypatch.delenv("MOONLIGHT_PROVIDER", raising=False)
     monkeypatch.setenv("PROVIDER", "ollama-cloud")
     monkeypatch.setenv("META_API_KEY", "env-meta-key")
     monkeypatch.setenv("OLLAMA_API_KEY", "env-ollama-key")
@@ -184,3 +186,105 @@ def test_verify_ollama_connection_helper() -> None:
     assert success is True
     assert "Connected successfully" in msg
     assert models == ["gemma4:31b"]
+
+
+def test_verify_meta_connection_success() -> None:
+    mock_response = MagicMock(spec=httpx.Response)
+    mock_response.status_code = 200
+
+    mock_client = MagicMock(spec=httpx.Client)
+    mock_client.post.return_value = mock_response
+
+    success, msg, latency_ms = verify_meta_connection(
+        base_url="https://api.meta.ai/v1",
+        api_key="valid-meta-key",
+        model="muse-spark-1.3",
+        client=mock_client,
+    )
+    assert success is True
+    assert "Connected successfully" in msg
+    assert "muse-spark-1.3" in msg
+    assert latency_ms >= 0.0
+    mock_client.post.assert_called_once()
+    assert mock_client.post.call_args[0][0] == "https://api.meta.ai/v1/chat/completions"
+
+
+def test_verify_meta_connection_error_status() -> None:
+    mock_response = MagicMock(spec=httpx.Response)
+    mock_response.status_code = 401
+    mock_response.json.return_value = {"error": "Invalid API token"}
+
+    mock_client = MagicMock(spec=httpx.Client)
+    mock_client.post.return_value = mock_response
+
+    success, msg, _ = verify_meta_connection(
+        base_url="https://api.meta.ai/v1",
+        api_key="bad-key",
+        client=mock_client,
+    )
+    assert success is False
+    assert "API error (401)" in msg
+    assert "Invalid API token" in msg
+
+
+def test_verify_meta_connection_missing_key() -> None:
+    success, msg, _ = verify_meta_connection(
+        base_url="https://api.meta.ai/v1",
+        api_key="",
+    )
+    assert success is False
+    assert "key is required" in msg
+
+
+def test_verify_meta_connection_invalid_scheme() -> None:
+    success, msg, _ = verify_meta_connection(
+        base_url="ftp://api.meta.ai/v1",
+        api_key="key",
+    )
+    assert success is False
+    assert "must use HTTPS or HTTP scheme" in msg
+
+
+def test_save_settings_sync_env_meta(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    import os
+
+    keys = (
+        "MOONLIGHT_PROVIDER",
+        "PROVIDER",
+        "MODEL_API_KEY",
+        "META_API_KEY",
+        "MOONLIGHT_META_MODEL",
+        "META_MODEL",
+        "MOONLIGHT_META_BASE_URL",
+        "META_BASE_URL",
+    )
+    for k in keys:
+        monkeypatch.delenv(k, raising=False)
+
+    settings_file = tmp_path / "sync_settings.json"
+    settings = AppSettings(
+        provider="meta",
+        meta_api_key="sk-meta-test-123",
+        meta_model="muse-spark-1.3",
+        meta_base_url="https://custom.meta.endpoint/v1",
+    )
+
+    try:
+        save_settings(settings, path=settings_file, sync_env=True)
+
+        assert os.environ.get("MOONLIGHT_PROVIDER") == "meta"
+        assert os.environ.get("PROVIDER") == "meta"
+        assert os.environ.get("MODEL_API_KEY") == "sk-meta-test-123"
+        assert os.environ.get("META_API_KEY") == "sk-meta-test-123"
+        assert os.environ.get("MOONLIGHT_META_MODEL") == "muse-spark-1.3"
+        assert os.environ.get("META_MODEL") == "muse-spark-1.3"
+        assert (
+            os.environ.get("MOONLIGHT_META_BASE_URL")
+            == "https://custom.meta.endpoint/v1"
+        )
+        assert os.environ.get("META_BASE_URL") == "https://custom.meta.endpoint/v1"
+    finally:
+        for k in keys:
+            os.environ.pop(k, None)

@@ -243,6 +243,8 @@ class InvestigationWorker(QThread):
             enable_cache=self.settings.enable_cache,
             ollama_base_url=self.settings.ollama_base_url,
             ollama_model=self.settings.ollama_model,
+            meta_base_url=self.settings.meta_base_url,
+            meta_model=self.settings.meta_model,
             allow_custom_host=self.settings.allow_custom_host,
         )
 
@@ -268,6 +270,9 @@ class InvestigationWorker(QThread):
             provider = get_provider(
                 config=reasoning_cfg,
                 provider="meta",
+                api_key=self.settings.meta_api_key or None,
+                model=self.settings.meta_model or None,
+                base_url=self.settings.meta_base_url or None,
             )
         else:
             provider = MockProvider()

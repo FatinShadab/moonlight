@@ -29,6 +29,7 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 | CI | Full history secret scanning with Gitleaks (PR #17) | maintainer to fill |
 | Eval | Offline evaluation harness & metrics (PR #18) | maintainer to fill |
 | P7b | Meta Model API provider (branch feat/meta-provider) | maintainer to fill |
+| Settings | Complete UI Settings Configuration for Meta & AI Providers (PR pending) | maintainer to fill |
 
 ## History notes
 
@@ -303,3 +304,13 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 - Updated evaluation suite: added `--provider {mock,ollama,meta}` to `python -m moonlight.eval`. Live runs are opt-in and excluded from CI; `meta` without a key records `skipped (no MODEL_API_KEY)` without failure. Stores `is_mock=False` for live rows and tracks schema-valid rate, grounded rate, hallucinated-evidence count, unsafe-action proposals rejected, and fallback behavior.
 - Updated `RESULTS.md` with Section 9 "Live Model Results" keyed by provider/model, separate from mock results, noting date and scenario counts.
 - Validation: 580 pytest tests pass, strict mypy passes with 0 errors across 104 files, ruff check and format clean.
+
+## 2026-11-03 — Complete UI Settings Configuration for Meta Model API & AI Providers (feat/ui-settings-provider-config)
+
+- Added direct in-app configuration for Meta Model API key, model selection (`muse-spark-1.3`, `llama-3.3-70b-instruct`, etc.), and base URL (`https://api.meta.ai/v1`) directly in `SettingsViewWidget`.
+- Added asynchronous Meta connection testing (`MetaConnectionWorker`, `verify_meta_connection`) with live ping latency and status reporting without UI freezes.
+- Integrated `AppSettings` persistence and automatic process environment synchronization (`save_settings(sync_env=True)`) for `MODEL_API_KEY`, `META_API_KEY`, `MOONLIGHT_META_MODEL`, `MOONLIGHT_META_BASE_URL`, and `MOONLIGHT_PROVIDER`.
+- Connected investigation controller and worker pipeline directly to `AppSettings` so investigations run using the in-app configured provider without requiring `.env` file editing or code touches.
+- Added comprehensive unit and UI tests in `tests/test_ui_settings.py` and `tests/test_settings.py`.
+- Validation: 589 pytest tests pass, strict mypy passes with 0 errors across 104 files, ruff check and format clean.
+

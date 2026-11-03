@@ -26,6 +26,7 @@ from moonlight.core.config import (
     ProviderType,
     load_settings,
     save_settings,
+    verify_meta_connection,
     verify_ollama_connection,
 )
 from moonlight.reasoning.cache import ReasoningCache
@@ -61,6 +62,35 @@ class OllamaConnectionWorker(QThread):
         self.finished_result.emit(success, message, models)
 
 
+class MetaConnectionWorker(QThread):
+    """Background worker to verify Meta Model API connection without UI freeze."""
+
+    finished_result = Signal(bool, str, float)  # success, message, latency_ms
+
+    def __init__(
+        self,
+        base_url: str,
+        api_key: str,
+        model: str = "muse-spark-1.3",
+        timeout: float = 15.0,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.base_url = base_url
+        self.api_key = api_key
+        self.model = model
+        self.timeout = timeout
+
+    def run(self) -> None:
+        success, message, latency_ms = verify_meta_connection(
+            base_url=self.base_url,
+            api_key=self.api_key,
+            model=self.model,
+            timeout=self.timeout,
+        )
+        self.finished_result.emit(success, message, latency_ms)
+
+
 class SettingsViewWidget(QWidget):
     """Settings management view for providers, API keys, privacy, and heuristics."""
 
@@ -77,6 +107,7 @@ class SettingsViewWidget(QWidget):
         self._settings_path = Path(settings_path) if settings_path else None
         self._settings = settings or load_settings(path=self._settings_path)
         self._worker: OllamaConnectionWorker | None = None
+        self._meta_worker: MetaConnectionWorker | None = None
 
         self._init_layout()
         self.set_settings(self._settings)
@@ -204,7 +235,18 @@ class SettingsViewWidget(QWidget):
         meta_key_row.addWidget(self.btn_toggle_meta_key)
         meta_layout.addLayout(meta_key_row)
 
-        # Meta Model
+        # Meta Base URL
+        meta_url_row = QHBoxLayout()
+        meta_url_lbl = QLabel("Meta Base URL:")
+        meta_url_lbl.setFixedWidth(120)
+        meta_url_row.addWidget(meta_url_lbl)
+
+        self.input_meta_base_url = QLineEdit("https://api.meta.ai/v1")
+        self.input_meta_base_url.setObjectName("input_meta_base_url")
+        meta_url_row.addWidget(self.input_meta_base_url, stretch=1)
+        meta_layout.addLayout(meta_url_row)
+
+        # Meta Model & Connection Test
         meta_model_row = QHBoxLayout()
         meta_model_lbl = QLabel("Meta Model:")
         meta_model_lbl.setFixedWidth(120)
@@ -215,13 +257,34 @@ class SettingsViewWidget(QWidget):
         self.combo_meta_model.setEditable(True)
         self.combo_meta_model.addItems(
             [
+                "muse-spark-1.3",
                 "llama-3.3-70b-instruct",
                 "llama-3.1-70b-instruct",
                 "llama-3.1-8b-instruct",
             ]
         )
         meta_model_row.addWidget(self.combo_meta_model, stretch=1)
+
+        self.btn_test_meta = QPushButton("Test Connection")
+        self.btn_test_meta.setObjectName("btn_test_meta")
+        self.btn_test_meta.setIcon(get_icon("refresh"))
+        self.btn_test_meta.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_test_meta.setToolTip(
+            "Send a lightweight ping to verify Meta Model API key and endpoint"
+        )
+        self.btn_test_meta.clicked.connect(self._test_meta_clicked)
+        meta_model_row.addWidget(self.btn_test_meta)
+
         meta_layout.addLayout(meta_model_row)
+
+        # Meta Status Feedback
+        self.lbl_meta_status = QLabel("")
+        self.lbl_meta_status.setObjectName("lbl_meta_status")
+        self.lbl_meta_status.setStyleSheet(
+            f"color: {COLORS.text_muted}; font-size: 11px;"
+        )
+        self.lbl_meta_status.setWordWrap(True)
+        meta_layout.addWidget(self.lbl_meta_status)
 
         meta_info = QLabel(
             "Note: Meta Model API is used for schema-validated, "
@@ -648,18 +711,59 @@ class SettingsViewWidget(QWidget):
             self.lbl_ollama_status.setText(f"Connection error: {message}")
             self.lbl_ollama_status.setStyleSheet(f"color: {COLORS.risk_high_text};")
 
+    def _test_meta_clicked(self) -> None:
+        url = self.input_meta_base_url.text().strip() or "https://api.meta.ai/v1"
+        key = self.input_meta_key.text().strip()
+        model = self.combo_meta_model.currentText().strip() or "muse-spark-1.3"
+        timeout = float(self.spin_timeout.value())
+
+        if not key:
+            self.lbl_meta_status.setText(
+                "Error: Meta API key is required to test connection."
+            )
+            self.lbl_meta_status.setStyleSheet(f"color: {COLORS.risk_high_text};")
+            return
+
+        self.btn_test_meta.setEnabled(False)
+        self.lbl_meta_status.setText("Testing connection to Meta Model API...")
+        self.lbl_meta_status.setStyleSheet(f"color: {COLORS.info_text};")
+
+        self._meta_worker = MetaConnectionWorker(
+            base_url=url,
+            api_key=key,
+            model=model,
+            timeout=timeout,
+            parent=self,
+        )
+        self._meta_worker.finished_result.connect(self._on_meta_connection_tested)
+        self._meta_worker.start()
+
+    def _on_meta_connection_tested(
+        self, success: bool, message: str, latency_ms: float
+    ) -> None:
+        self.btn_test_meta.setEnabled(True)
+        if success:
+            self.lbl_meta_status.setText(message)
+            self.lbl_meta_status.setStyleSheet(f"color: {COLORS.success_text};")
+        else:
+            self.lbl_meta_status.setText(f"Connection error: {message}")
+            self.lbl_meta_status.setStyleSheet(f"color: {COLORS.risk_high_text};")
+
     def set_settings(self, settings: AppSettings) -> None:
         """Populate widget inputs from AppSettings."""
         self._settings = settings
 
         # Provider
         idx = self.combo_provider.findText(settings.provider)
+        if idx < 0 and settings.provider == "ollama":
+            idx = self.combo_provider.findText("ollama-cloud")
         if idx >= 0:
             self.combo_provider.setCurrentIndex(idx)
 
         # Meta
         self.input_meta_key.setText(settings.meta_api_key)
         self.combo_meta_model.setEditText(settings.meta_model)
+        self.input_meta_base_url.setText(settings.meta_base_url)
 
         # Ollama
         self.input_ollama_key.setText(settings.ollama_api_key)
@@ -694,9 +798,8 @@ class SettingsViewWidget(QWidget):
 
         min_growth = float(self.spin_min_growth.value()) * (1024.0 * 1024.0)
 
-        meta_mod = (
-            self.combo_meta_model.currentText().strip() or "llama-3.3-70b-instruct"
-        )
+        meta_mod = self.combo_meta_model.currentText().strip() or "muse-spark-1.3"
+        meta_url = self.input_meta_base_url.text().strip() or "https://api.meta.ai/v1"
         ollama_mod = self.combo_ollama_model.currentText().strip() or "gemma4:31b"
         ollama_url = self.input_ollama_url.text().strip() or "https://ollama.com"
 
@@ -704,6 +807,7 @@ class SettingsViewWidget(QWidget):
             provider=provider,
             meta_api_key=self.input_meta_key.text().strip(),
             meta_model=meta_mod,
+            meta_base_url=meta_url,
             ollama_api_key=self.input_ollama_key.text().strip(),
             ollama_model=ollama_mod,
             ollama_base_url=ollama_url,
