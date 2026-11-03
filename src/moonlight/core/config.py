@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import time
 import urllib.parse
 from pathlib import Path
 from typing import Final, Literal
@@ -199,6 +200,14 @@ def save_settings(
             os.environ.pop("MODEL_API_KEY", None)
             os.environ.pop("META_API_KEY", None)
 
+        if settings.meta_model:
+            os.environ["MOONLIGHT_META_MODEL"] = settings.meta_model
+            os.environ["META_MODEL"] = settings.meta_model
+
+        if settings.meta_base_url:
+            os.environ["MOONLIGHT_META_BASE_URL"] = settings.meta_base_url
+            os.environ["META_BASE_URL"] = settings.meta_base_url
+
         if settings.ollama_api_key:
             os.environ["OLLAMA_API_KEY"] = settings.ollama_api_key
         elif "OLLAMA_API_KEY" in os.environ:
@@ -211,6 +220,7 @@ def save_settings(
             os.environ["OLLAMA_BASE_URL"] = settings.ollama_base_url
 
         os.environ["PROVIDER"] = settings.provider
+        os.environ["MOONLIGHT_PROVIDER"] = settings.provider
 
 
 def fetch_ollama_models(
@@ -309,3 +319,79 @@ def verify_ollama_connection(
         )
     except Exception as exc:
         return False, str(exc), []
+
+
+def verify_meta_connection(
+    base_url: str,
+    api_key: str,
+    model: str = "muse-spark-1.3",
+    timeout: float = 15.0,
+    client: httpx.Client | None = None,
+) -> tuple[bool, str, float]:
+    """Verify connection to Meta Model API endpoint.
+
+    Args:
+        base_url: Base URL (e.g. https://api.meta.ai/v1).
+        api_key: API key for Bearer authentication.
+        model: Target model name (default: muse-spark-1.3).
+        timeout: Network timeout in seconds.
+        client: Optional injected httpx Client (for testing).
+
+    Returns:
+        tuple of (success: bool, message: str, latency_ms: float)
+    """
+    clean_base = base_url.rstrip("/")
+    parsed = urllib.parse.urlparse(clean_base)
+    if parsed.scheme.lower() not in ("https", "http"):
+        return (
+            False,
+            f"Meta base URL must use HTTPS or HTTP scheme (got {clean_base!r})",
+            0.0,
+        )
+
+    clean_key = api_key.strip()
+    if not clean_key:
+        return False, "Meta API key is required to test connection.", 0.0
+
+    target_model = model.strip() or "muse-spark-1.3"
+    endpoint = f"{clean_base}/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {clean_key}",
+        "Content-Type": "application/json",
+    }
+    body = {
+        "model": target_model,
+        "messages": [{"role": "user", "content": "ping"}],
+        "max_tokens": 1,
+    }
+
+    start = time.perf_counter()
+    owns_client = client is None
+    http_client = client or httpx.Client(timeout=timeout, follow_redirects=False)
+
+    try:
+        resp = http_client.post(endpoint, headers=headers, json=body)
+        elapsed_ms = (time.perf_counter() - start) * 1000.0
+        if resp.status_code == 200:
+            return (
+                True,
+                f"Connected successfully to Meta Model API! Model: {target_model} "
+                f"(Latency: {elapsed_ms:.1f} ms)",
+                elapsed_ms,
+            )
+        err_msg = ""
+        try:
+            err_data = resp.json()
+            if isinstance(err_data, dict):
+                err_msg = str(
+                    err_data.get("error", err_data.get("message", resp.text[:200]))
+                )
+        except Exception:
+            err_msg = resp.text[:200]
+        return False, f"API error ({resp.status_code}): {err_msg}", elapsed_ms
+    except Exception as exc:
+        elapsed_ms = (time.perf_counter() - start) * 1000.0
+        return False, f"Connection error: {exc}", elapsed_ms
+    finally:
+        if owns_client:
+            http_client.close()

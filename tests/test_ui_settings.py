@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from PySide6.QtWidgets import QApplication, QLineEdit
 
 from moonlight.core.config import AppSettings
@@ -34,6 +35,12 @@ def test_settings_view_widget_renders(qapp: QApplication) -> None:
     # Model and timeout
     assert widget.combo_ollama_model.currentText() == "llama3.3:latest"
     assert widget.spin_timeout.value() == 40.0
+
+    # Meta fields
+    assert widget.input_meta_base_url.text() == "https://api.meta.ai/v1"
+    assert widget.combo_meta_model.count() >= 4
+    assert widget.combo_meta_model.itemText(0) == "muse-spark-1.3"
+    assert widget.btn_test_meta.isEnabled()
 
     # Toggle password visibility
     assert widget.btn_toggle_meta_key.text() == "Show"
@@ -118,3 +125,95 @@ def test_settings_view_widget_fetch_callback(qapp: QApplication) -> None:
     widget.close()
     widget.deleteLater()
     qapp.processEvents()
+
+
+def test_settings_view_widget_save_meta_configuration(
+    qapp: QApplication, tmp_path: Path
+) -> None:
+    settings_file = tmp_path / "settings_meta.json"
+    widget = SettingsViewWidget(settings_path=settings_file)
+    widget.show()
+
+    emitted_settings: list[AppSettings] = []
+    widget.settings_saved.connect(emitted_settings.append)
+
+    # Configure Meta fields
+    widget.combo_provider.setCurrentText("meta")
+    widget.input_meta_key.setText("meta-custom-secret")
+    widget.input_meta_base_url.setText("https://meta-gateway.corp.internal/v1")
+    widget.combo_meta_model.setEditText("muse-spark-1.3")
+
+    # Click Save
+    widget.btn_save.click()
+
+    assert len(emitted_settings) == 1
+    saved = emitted_settings[0]
+    assert saved.provider == "meta"
+    assert saved.meta_api_key == "meta-custom-secret"
+    assert saved.meta_base_url == "https://meta-gateway.corp.internal/v1"
+    assert saved.meta_model == "muse-spark-1.3"
+    assert "saved successfully" in widget.lbl_feedback.text()
+    assert settings_file.exists()
+
+    widget.close()
+    widget.deleteLater()
+    qapp.processEvents()
+
+
+def test_settings_view_widget_test_meta_without_key(qapp: QApplication) -> None:
+    widget = SettingsViewWidget()
+    widget.show()
+    widget.input_meta_key.setText("")
+
+    # Click Test Connection without key
+    widget.btn_test_meta.click()
+    assert "Error: Meta API key is required" in widget.lbl_meta_status.text()
+
+    widget.close()
+    widget.deleteLater()
+    qapp.processEvents()
+
+
+def test_settings_view_widget_meta_callbacks(qapp: QApplication) -> None:
+    widget = SettingsViewWidget()
+    widget.show()
+
+    # Success callback
+    widget._on_meta_connection_tested(True, "Connected OK (42.0 ms)", 42.0)
+    assert "Connected OK" in widget.lbl_meta_status.text()
+    assert widget.btn_test_meta.isEnabled()
+
+    # Failure callback
+    widget._on_meta_connection_tested(False, "Unauthorized 401", 10.0)
+    assert "Connection error: Unauthorized 401" in widget.lbl_meta_status.text()
+    assert widget.btn_test_meta.isEnabled()
+
+    widget.close()
+    widget.deleteLater()
+    qapp.processEvents()
+
+
+def test_meta_connection_worker(
+    qapp: QApplication, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from moonlight.ui.settings_view import MetaConnectionWorker
+
+    def fake_verify(*args: object, **kwargs: object) -> tuple[bool, str, float]:
+        return True, "Fake meta connected", 15.0
+
+    monkeypatch.setattr(
+        "moonlight.ui.settings_view.verify_meta_connection", fake_verify
+    )
+
+    worker = MetaConnectionWorker(
+        base_url="https://api.meta.ai/v1",
+        api_key="sk-test",
+        model="muse-spark-1.3",
+    )
+
+    results: list[tuple[bool, str, float]] = []
+    worker.finished_result.connect(lambda s, m, lat: results.append((s, m, lat)))
+    worker.run()
+
+    assert len(results) == 1
+    assert results[0] == (True, "Fake meta connected", 15.0)
