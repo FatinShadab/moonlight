@@ -10,6 +10,7 @@ from pathlib import Path
 # Force offscreen headless Qt rendering
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
+from PySide6.QtGui import QFont, QFontDatabase
 from PySide6.QtWidgets import QApplication
 
 from moonlight.core.evidence import (
@@ -32,11 +33,34 @@ from moonlight.ui.events import get_event_bus
 from moonlight.ui.window import MoonlightMainWindow
 
 
+def _ensure_fonts_loaded(app: QApplication) -> None:
+    """Ensure system fonts are loaded into Qt so offscreen rendering has typography."""
+    if sys.platform == "win32":
+        windir = os.environ.get("WINDIR", "C:\\Windows")
+        fonts_dir = Path(windir) / "Fonts"
+        font_files = [
+            "segoeui.ttf",
+            "segoeuib.ttf",
+            "segoeuii.ttf",
+            "segoeuiz.ttf",
+            "seguisb.ttf",
+            "arial.ttf",
+            "arialbd.ttf",
+        ]
+        for name in font_files:
+            font_path = fonts_dir / name
+            if font_path.exists():
+                QFontDatabase.addApplicationFont(str(font_path))
+
+    app.setFont(QFont("Segoe UI", 10))
+
+
 def generate_screenshots() -> None:
     """Capture offscreen screenshots of the review interface."""
     app = QApplication.instance()
     if not isinstance(app, QApplication):
         app = QApplication(sys.argv)
+    _ensure_fonts_loaded(app)
 
     out_dir = Path(__file__).resolve().parents[1] / "docs" / "images"
     out_dir.mkdir(parents=True, exist_ok=True)
