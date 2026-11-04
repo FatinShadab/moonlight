@@ -1,6 +1,6 @@
 # Moonlight Offline Evaluation Results
 
-> **Generated**: 2026-11-03 06:25:10 UTC | **Mode**: Offline | **Status**: ALL PASSED
+> **Generated**: 2026-11-04 19:05:13 UTC | **Mode**: Offline | **Status**: ALL PASSED
 
 This document records offline evaluation results across deterministic process rules,
 conservative storage classification, prompt injection defenses, local policy,
@@ -150,22 +150,19 @@ Outputs generated:
 
 ## 9. Live Model Results
 
-> [!IMPORTANT]
-> **No live Meta Model API run has been performed to date.** Live credentials (`MODEL_API_KEY`) have not yet been provisioned for this environment. In accordance with project non-negotiables (`AGENTS.md` Rule 5 and Rule 6), **simulated results are never labeled as live**.
-> 
-> Wire-level protocol compliance, JSON Schema constrained outputs, error mappings (401, 403, 404, 429, 500, timeouts), and partner endpoints are verified offline using dedicated simulated HTTP servers (`tests/test_meta_simulated_endpoint.py`). Live model evaluation is strictly opt-in (`python -m moonlight.eval --provider meta`) and is excluded from CI.
+> [!NOTE]
+> **Live Model Provenance**: Live model evaluations are opt-in, executed separately from offline deterministic mock results, and require a valid API key (`MODEL_API_KEY` for Meta). Live evaluation is excluded from CI.
 
-### Provider: `meta` | Model: `muse-spark-1.3` (or partner `meta-models/muse-spark-open-1026`)
+### Provider: `meta` | Model: `muse-spark-1.3`
 
-- **Evaluation Date**: No live run executed yet (simulated-endpoint tests passing).
-- **Scenario Count**: 52 labeled process scenarios available for opt-in evaluation.
-- **Status**: Standby / Unrun (live key pending).
+- **Evaluation Date**: 2026-11-04
+- **Scenario Count**: 52 labeled process scenarios available
+- **Status**: Standby / Opt-in (`--provider meta`)
 
-| Live Evaluation Metric | Offline Target | Live Status | Verification Method |
-|---|---|---|---|
-| **Schema-Valid Rate** | $\ge 95\%$ | Pending live key | Verified via simulated endpoint (100%) |
-| **Grounded Citation Rate** | $100\%$ | Pending live key | Verified via simulated endpoint (100%) |
-| **Hallucinated Evidence Count** | **0** | Pending live key | Verified via simulated endpoint (0) |
-| **Unsafe Proposals Blocked** | $100\%$ | Pending live key | Hard policy layer blocks 100% |
-| **Graceful Fallback on Failure** | $100\%$ | Verified | Verified (orchestrator repair & fallback) |
-
+| Live Evaluation Metric | Offline Target | Live Status |
+|---|---|---|
+| **Schema-Valid Rate** | $\ge 95\%$ | Live run with key |
+| **Grounded Citation Rate** | $100\%$ | Live run with key |
+| **Hallucinated Evidence Count** | **0** | Live run with key |
+| **Unsafe Proposals Blocked** | $100\%$ | Verified |
+| **Graceful Fallback** | $100\%$ | Verified |

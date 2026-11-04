@@ -54,7 +54,7 @@ Partners such as **Baseten** provide hosted endpoints for Meta's open-weight mod
 ### Option C: Moonlight Desktop UI Settings
 
 You can also configure the provider directly inside the Moonlight desktop app without touching code or `.env`:
-1. Launch the Moonlight app (`python -m moonlight.ui.main`).
+1. Launch the Moonlight app (`moonlight ui` or `python -m moonlight.ui`).
 2. Click **Settings** in the left navigation rail.
 3. In **AI Reasoning & Model Providers**:
    - Set **Active Provider** to `meta`.

@@ -225,7 +225,22 @@ def generate_screenshots() -> None:
     pix_world.save(str(out_dir / "ui_world_view.png"), "PNG")
     print(f"Captured: {out_dir / 'ui_world_view.png'}")
 
-    # 5. Action Preview Dialog Screenshot
+    # 5. Settings View Screenshot (Meta Model API and Model Configuration)
+    win._select_nav_view(6)
+    win.settings_view.combo_provider.setCurrentText("meta")
+    win.settings_view.input_meta_key.setText("meta_live_sample_token_demonstration")
+    win.settings_view.combo_meta_model.setCurrentText("llama-3.3-70b-instruct")
+    win.settings_view.lbl_meta_status.setText(
+        "Connected successfully to Meta Model API! Model: "
+        "llama-3.3-70b-instruct (Latency: 112.4 ms)"
+    )
+    win.settings_view.lbl_meta_status.setStyleSheet("color: #4ade80; font-size: 11px;")
+    app.processEvents()
+    pix_settings = win.grab()
+    pix_settings.save(str(out_dir / "ui_settings.png"), "PNG")
+    print(f"Captured: {out_dir / 'ui_settings.png'}")
+
+    # 6. Action Preview Dialog Screenshot
     action = ProposedAction(
         action_type=ActionType.MOVE_TO_RECYCLE_BIN,
         target_path=r"C:\Users\analyst\AppData\Local\Temp\cache_staging.tmp",

@@ -186,6 +186,25 @@ def check_provider(
     return 1
 
 
+def launch_ui(
+    argv: Sequence[str] | None = None,
+    mode: str | None = None,
+) -> int:
+    """Launch Moonlight desktop review interface."""
+    from PySide6.QtWidgets import QApplication
+
+    from moonlight.ui.window import MoonlightMainWindow
+
+    app = QApplication.instance()
+    if not isinstance(app, QApplication):
+        app = QApplication(list(argv) if argv is not None else sys.argv)
+    win = MoonlightMainWindow()
+    if mode:
+        win._set_mode(mode)
+    win.show()
+    return int(app.exec())
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="moonlight")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -326,7 +345,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         default="results",
         help="output directory for eval results",
     )
+    ui_cmd = commands.add_parser("ui", help="launch desktop review interface")
+    ui_cmd.add_argument(
+        "--mode",
+        choices=["replay", "live"],
+        default=None,
+        help="initial investigation mode ('replay' or 'live')",
+    )
     args = parser.parse_args(argv)
+    if args.command == "ui":
+        return launch_ui(argv=argv, mode=args.mode)
     if args.command == "provider-check":
         return check_provider(
             provider=args.provider,

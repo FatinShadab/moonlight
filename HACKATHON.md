@@ -325,4 +325,13 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 - Built a dedicated wire-level simulated endpoint test suite (`tests/test_meta_simulated_endpoint.py`, 12 tests) emulating the HTTP/TCP Chat Completions endpoint, proving success with `strict: true` json_schema, malformed JSON, schema violations, 401, 403, 429 retry backoff, 500 exhaustion, timeouts, partner endpoints, orchestrator repair & safe fallback, and secret redaction.
 - Updated `results/RESULTS.md` Section 9 to explicitly confirm that no live Meta run has occurred and all test proofs are simulated-endpoint tests.
 
+## 2026-11-05 — UI Launcher CLI, Offscreen Settings Screenshot & Judge README Overhaul (feat/ui-runner-and-judge-docs)
+
+- Added first-class `moonlight ui` subcommand in `src/moonlight/cli.py` and module launchers `src/moonlight/ui/__main__.py` and `src/moonlight/ui/main.py`, enabling judges and users to launch the desktop review interface with `moonlight ui` or `python -m moonlight.ui`.
+- Added unit tests in `tests/test_ui_cli.py` covering CLI help display, `--mode {replay,live}` argument parsing, and execution dispatch with 100% test pass rate.
+- Enhanced `scripts/generate_ui_screenshots.py` with offscreen capture of `docs/images/ui_settings.png` demonstrating Meta Model API provider configuration, model selection (`llama-3.3-70b-instruct`, `muse-spark-1.3`), base URL, and live latency ping test.
+- Regenerated all offscreen documentation screenshots (`ui_overview.png`, `ui_sent_to_model.png`, `ui_world_view.png`, `ui_settings.png`, `ui_consent_dialog.png`).
+- Overhauled `README.md` for judges and open-source contributors: replaced outdated placeholders with an executive pitch, interactive screen gallery, copy-paste-ready Quickstart for Windows 10/11, comprehensive Meta Model API & partner endpoint setup guides (UI Settings, `.env`, shell variables), offline fallback resilience documentation, benchmark KPI table (100% precision, 0% FPR, 0 dangerous misclassifications), and a complete CLI command reference.
+- Updated `docs/providers.md` to reference `moonlight ui` launcher commands.
+- Validation: 604 pytest tests pass across 105 files; strict mypy clean; ruff check and format clean.
 

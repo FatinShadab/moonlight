@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-11-03T06:25:10.182201Z",
+  "timestamp": "2026-11-04T19:05:13.926710Z",
   "overall_passed": true,
   "total_scenarios_evaluated": 143,
   "total_passed": 143,
@@ -9,7 +9,7 @@
       "eval_name": "process_rules_evaluation",
       "provider": "rules-only",
       "model": "deterministic-p3",
-      "timestamp": "2026-11-03T06:25:10.182201Z",
+      "timestamp": "2026-11-04T19:05:13.926710Z",
       "passed": true,
       "metrics": {
         "total_scenarios": 52,
@@ -31,7 +31,7 @@
       "eval_name": "storage_rules_evaluation",
       "provider": "rules-only",
       "model": "storage-classifier-p1",
-      "timestamp": "2026-11-03T06:25:10.182201Z",
+      "timestamp": "2026-11-04T19:05:13.926710Z",
       "passed": true,
       "metrics": {
         "total_scenarios": 36,
@@ -48,7 +48,7 @@
       "eval_name": "prompt_injection_defense",
       "provider": "rules-only",
       "model": "prompt-boundary-v1",
-      "timestamp": "2026-11-03T06:25:10.182201Z",
+      "timestamp": "2026-11-04T19:05:13.926710Z",
       "passed": true,
       "metrics": {
         "total_scenarios": 10,
@@ -61,7 +61,7 @@
       "eval_name": "policy_rejection_evaluation",
       "provider": "policy-layer",
       "model": "local-policy-p7b",
-      "timestamp": "2026-11-03T06:25:10.182201Z",
+      "timestamp": "2026-11-04T19:05:13.926710Z",
       "passed": true,
       "metrics": {
         "total_actions_evaluated": 26,
@@ -78,7 +78,7 @@
       "eval_name": "mock_reasoning_and_grounding",
       "provider": "mock",
       "model": "mock-meta-spark (MOCK)",
-      "timestamp": "2026-11-03T06:25:10.182201Z",
+      "timestamp": "2026-11-04T19:05:13.926710Z",
       "passed": true,
       "metrics": {
         "handwritten_reports_total": 11,
@@ -94,7 +94,7 @@
       "eval_name": "orchestrator_fallback_behavior",
       "provider": "mock",
       "model": "mock-replay (MOCK)",
-      "timestamp": "2026-11-03T06:25:10.182201Z",
+      "timestamp": "2026-11-04T19:05:13.926710Z",
       "passed": true,
       "metrics": {
         "total_failure_scenarios": 5,
