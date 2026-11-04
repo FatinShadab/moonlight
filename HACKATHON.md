@@ -28,8 +28,9 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 | P8b | Ollama cloud provider hardening (PR #16) | maintainer to fill |
 | CI | Full history secret scanning with Gitleaks (PR #17) | maintainer to fill |
 | Eval | Offline evaluation harness & metrics (PR #18) | maintainer to fill |
-| P7b | Meta Model API provider (branch feat/meta-provider) | maintainer to fill |
-| Settings | Complete UI Settings Configuration for Meta & AI Providers (PR pending) | maintainer to fill |
+| P7b | Meta Model API provider (PR #20) | maintainer to fill |
+| Settings | Complete UI Settings Configuration for Meta & AI Providers (PR #21) | maintainer to fill |
+| Hardening | Meta provider audit, hardening & simulated endpoint proofs (branch feat/meta-provider-hardening) | maintainer to fill |
 
 ## History notes
 
@@ -313,4 +314,15 @@ Moonlight is being built for the Meta Global AI Developer Hackathon, Build for Y
 - Connected investigation controller and worker pipeline directly to `AppSettings` so investigations run using the in-app configured provider without requiring `.env` file editing or code touches.
 - Added comprehensive unit and UI tests in `tests/test_ui_settings.py` and `tests/test_settings.py`.
 - Validation: 589 pytest tests pass, strict mypy passes with 0 errors across 104 files, ruff check and format clean.
+
+## 2026-11-04 — Meta Provider Audit, Wire-Level Hardening & Simulated Endpoint Proofs (feat/meta-provider-hardening)
+
+- Audited Meta Model API and OpenAI-compatible partner endpoints (e.g. Baseten with `meta-models/muse-spark-open-1026`) against official documentation (`dev.meta.ai` and `meta-models/meta-model-cookbook`).
+- Created `docs/meta-provider-assumptions.md` documenting verified properties vs explicit unverified operational assumptions (e.g. account quotas/pricing).
+- Created `docs/providers.md` documenting complete setup for Meta Model API, Baseten partner endpoints, Ollama, and Mock providers.
+- Hardened secret scrubbing in exceptions and error logs (`_sanitize_error_text`) to guarantee no leaked Bearer tokens or API keys.
+- Enhanced `moonlight provider-check --provider meta` with user-friendly missing-key guidance across `.env`, environment, and desktop UI settings.
+- Built a dedicated wire-level simulated endpoint test suite (`tests/test_meta_simulated_endpoint.py`, 12 tests) emulating the HTTP/TCP Chat Completions endpoint, proving success with `strict: true` json_schema, malformed JSON, schema violations, 401, 403, 429 retry backoff, 500 exhaustion, timeouts, partner endpoints, orchestrator repair & safe fallback, and secret redaction.
+- Updated `results/RESULTS.md` Section 9 to explicitly confirm that no live Meta run has occurred and all test proofs are simulated-endpoint tests.
+
 

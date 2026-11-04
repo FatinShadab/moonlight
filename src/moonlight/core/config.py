@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import time
 import urllib.parse
 from pathlib import Path
@@ -161,7 +162,11 @@ def load_settings(path: Path | str | None = None) -> AppSettings:
     else:
         valid_provider = "mock"
 
-    meta_key = os.environ.get("MODEL_API_KEY") or os.environ.get("META_API_KEY", "")
+    meta_key = (
+        os.environ.get("MODEL_API_KEY")
+        or os.environ.get("META_API_KEY")
+        or os.environ.get("BASETEN_API_KEY", "")
+    )
     meta_m = os.environ.get("MOONLIGHT_META_MODEL") or os.environ.get(
         "META_MODEL", "llama-3.3-70b-instruct"
     )
@@ -321,6 +326,22 @@ def verify_ollama_connection(
         return False, str(exc), []
 
 
+_SECRET_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"Bearer\s+[A-Za-z0-9\-_\.]+", re.IGNORECASE),
+    re.compile(
+        r"(?:sk-|meta-|key-|token-|baseten_)[A-Za-z0-9\-_\.]{8,}", re.IGNORECASE
+    ),
+)
+
+
+def _sanitize_error_text(text: str) -> str:
+    """Scrub potential auth tokens or sensitive keys from error strings."""
+    redacted = text
+    for pattern in _SECRET_PATTERNS:
+        redacted = pattern.sub("[REDACTED_SECRET]", redacted)
+    return redacted
+
+
 def verify_meta_connection(
     base_url: str,
     api_key: str,
@@ -388,10 +409,14 @@ def verify_meta_connection(
                 )
         except Exception:
             err_msg = resp.text[:200]
-        return False, f"API error ({resp.status_code}): {err_msg}", elapsed_ms
+        return (
+            False,
+            f"API error ({resp.status_code}): {_sanitize_error_text(err_msg)}",
+            elapsed_ms,
+        )
     except Exception as exc:
         elapsed_ms = (time.perf_counter() - start) * 1000.0
-        return False, f"Connection error: {exc}", elapsed_ms
+        return False, f"Connection error: {_sanitize_error_text(str(exc))}", elapsed_ms
     finally:
         if owns_client:
             http_client.close()

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import time
 import urllib.parse
 from collections.abc import Callable, Sequence
@@ -163,21 +164,41 @@ class MockProvider:
         return Report.model_validate_json(content)
 
 
+_SECRET_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"Bearer\s+[A-Za-z0-9\-_\.]+", re.IGNORECASE),
+    re.compile(
+        r"(?:sk-|meta-|key-|token-|baseten_)[A-Za-z0-9\-_\.]{8,}", re.IGNORECASE
+    ),
+)
+
+
+def _sanitize_error_text(text: str) -> str:
+    """Scrub potential auth tokens or sensitive keys from exception/error strings."""
+    redacted = text
+    for pattern in _SECRET_PATTERNS:
+        redacted = pattern.sub("[REDACTED_SECRET]", redacted)
+    return redacted
+
+
 def _extract_error_message(response: httpx.Response) -> str:
     """Safely extract error string from HTTP response without leaking secrets."""
+    raw = ""
     try:
         data = response.json()
         if isinstance(data, dict):
             if "error" in data:
                 err = data["error"]
                 if isinstance(err, dict):
-                    return str(err.get("message", err))
-                return str(err)
-            if "message" in data:
-                return str(data["message"])
+                    raw = str(err.get("message", err))
+                else:
+                    raw = str(err)
+            elif "message" in data:
+                raw = str(data["message"])
     except Exception:
         pass
-    return response.text[:200]
+    if not raw:
+        raw = response.text[:200]
+    return _sanitize_error_text(raw)
 
 
 def _coerce_evidence_payload(
@@ -786,7 +807,8 @@ class MetaProvider:
         key = (
             self._api_key
             or os.environ.get("MODEL_API_KEY")
-            or os.environ.get("META_API_KEY", "")
+            or os.environ.get("META_API_KEY")
+            or os.environ.get("BASETEN_API_KEY", "")
         )
         if not key.strip():
             raise MissingApiKeyError(
@@ -875,6 +897,7 @@ class MetaProvider:
                 "type": "json_schema",
                 "json_schema": {
                     "name": "InvestigationReport",
+                    "strict": True,
                     "schema": Report.model_json_schema(),
                 },
             },

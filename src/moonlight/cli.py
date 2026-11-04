@@ -58,12 +58,22 @@ def check_provider(
         key = (
             api_key
             or os.environ.get("MODEL_API_KEY")
-            or os.environ.get("META_API_KEY", "")
+            or os.environ.get("META_API_KEY")
+            or os.environ.get("BASETEN_API_KEY", "")
         ).strip()
         if not key:
             print(
-                "Error: MODEL_API_KEY environment variable is missing or empty.\n"
-                "Please configure MODEL_API_KEY to use the Meta Model API provider.",
+                "Error: MODEL_API_KEY environment variable is missing or empty.\n\n"
+                "To configure the Meta Model API provider, set your API key:\n"
+                "  1. In .env file:    MODEL_API_KEY=your_key_here\n"
+                "  2. In environment:  export MODEL_API_KEY=your_key_here\n"
+                "                      (or $env:MODEL_API_KEY='your_key_here')\n"
+                "  3. In Moonlight UI: Settings -> AI Reasoning & Model Providers\n"
+                "                      -> Meta Configuration -> Save Settings\n\n"
+                "For OpenAI-compatible partner endpoints (e.g. Baseten):\n"
+                "  MODEL_API_KEY=your_baseten_key\n"
+                "  MOONLIGHT_META_BASE_URL=https://inference.baseten.co/v1\n"
+                "  MOONLIGHT_META_MODEL=meta-models/muse-spark-open-1026",
                 file=sys.stderr,
             )
             return 1
@@ -113,17 +123,24 @@ def check_provider(
                     )
             except Exception:
                 err_msg = resp.text[:200]
+            from moonlight.core.config import _sanitize_error_text
+
+            safe_err = _sanitize_error_text(err_msg)
             print("Provider : meta", file=sys.stderr)
             print(
-                f"Status   : FAILED ({resp.status_code}) - {err_msg}", file=sys.stderr
+                f"Status   : FAILED ({resp.status_code}) - {safe_err}",
+                file=sys.stderr,
             )
             print(f"Model    : {target_model}", file=sys.stderr)
             print(f"Latency  : {elapsed_ms:.1f} ms", file=sys.stderr)
             return 1
         except Exception as exc:
+            from moonlight.core.config import _sanitize_error_text
+
             elapsed_ms = (time.perf_counter() - start) * 1000.0
+            safe_exc = _sanitize_error_text(str(exc))
             print("Provider : meta", file=sys.stderr)
-            print(f"Status   : FAILED - {exc}", file=sys.stderr)
+            print(f"Status   : FAILED - {safe_exc}", file=sys.stderr)
             print(f"Model    : {target_model}", file=sys.stderr)
             print(f"Latency  : {elapsed_ms:.1f} ms", file=sys.stderr)
             return 1
